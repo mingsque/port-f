@@ -39,19 +39,6 @@
     <script src="{% static 'proxy_manager/js/jquery.flot.resize.js' %}"></script>
     <script src="{% static 'proxy_manager/js/jquery.flot.pie.js' %}"></script>
     <script src="{% static 'proxy_manager/js/jquery.flot.stack.js' %}"></script>
-    <!-- Sparklines -->
-    <script src="{% static 'proxy_manager/js/sparklines.js' %}"></script>
-    <!-- jQuery Gritter -->
-    <script src="{% static 'proxy_manager/js/jquery.gritter.min.js' %}"></script>
-    <!-- Respond JS for IE8 -->
-    <script src="{% static 'proxy_manager/js/respond.min.js' %}"></script>
-    <!-- HTML5 Support for IE -->
-    <script src="{% static 'proxy_manager/js/html5shiv.js' %}"></script>
-    <!-- Custom JS -->
-    <script src="{% static 'proxy_manager/js/custom.js' %}"></script>
-    <!-- Script for this page -->
-    <script src="{% static 'proxy_manager/js/sparkline-index.js' %}"></script>
-
 
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top bs-docs-nav" role="banner">
@@ -72,122 +59,15 @@
 					<!-- Links -->
 					<ul class="nav navbar-nav navbar-right">
 						<li class="dropdown">
-							<a data-toggle="dropdown" class="dropdown-toggle" href="#">
-								<img src="img/user.jpg" alt="" class="nav-user-pic img-responsive" /> Admin <b class="caret"></b>
-							</a>
 							<!-- Dropdown menu -->
 							<ul class="dropdown-menu">
 							<li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
 							<li><a href="#"><i class="fa fa-cogs"></i> Settings</a></li>
 							<li><a href="login.html"><i class="fa fa-power-off"></i> Logout</a></li>
-							</ul>
+                            </ul>
 						</li>
-					</ul>
-					<!-- Notifications -->
-					<ul class="nav navbar-nav navbar-right">
-						<!-- Comment button with number of latest comments count -->
-						<li class="dropdown dropdown-big">
-							<a class="dropdown-toggle" href="#" data-toggle="dropdown">
-								<i class="fa fa-comments"></i> Chats <span   class="badge badge-info">6</span>
-							</a>
-							<ul class="dropdown-menu">
-								<li>
-									<!-- Heading - h5 -->
-									<h5><i class="fa fa-comments"></i> Chats</h5>
-									<!-- Use hr tag to add border -->
-									<hr />
-								</li>
-								<li>
-									<!-- List item heading h6 -->
-									<a href="#">Hi :)</a> <span class="label label-warning pull-right">10:42</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<a href="#">How are you?</a> <span class="label label-warning pull-right">20:42</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<a href="#">What are you doing?</a> <span class="label label-warning pull-right">14:42</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<div class="drop-foot">
-										<a href="#">View All</a>
-									</div>
-								</li>
-							</ul>
-						</li>
-						<!-- Message button with number of latest messages count-->
-						<li class="dropdown dropdown-big">
-							<a class="dropdown-toggle" href="#" data-toggle="dropdown">
-								<i class="fa fa-envelope-o"></i> Inbox <span class="badge badge-important">6</span>
-							</a>
-							<ul class="dropdown-menu">
-								<li>
-									<!-- Heading - h5 -->
-									<h5><i class="fa fa-envelope-o"></i> Messages</h5>
-									<!-- Use hr tag to add border -->
-									<hr />
-								</li>
-								<li>
-									<!-- List item heading h6 -->
-									<a href="#">Hello how are you?</a>
-									<!-- List item para -->
-									<p>Quisque eu consectetur erat eget  semper...</p>
-									<hr />
-								</li>
-								<li>
-									<a href="#">Today is wonderful?</a>
-									<p>Quisque eu consectetur erat eget  semper...</p>
-									<hr />
-								</li>
-								<li>
-									<div class="drop-foot">
-										<a href="#">View All</a>
-									</div>
-								</li>
-							</ul>
-						</li>
-						<!-- Members button with number of latest members count -->
-						<li class="dropdown dropdown-big">
-							<a class="dropdown-toggle" href="#" data-toggle="dropdown">
-								<i class="fa fa-user"></i> Users <span   class="badge badge-success">6</span>
-							</a>
-							<ul class="dropdown-menu">
-								<li>
-									<!-- Heading - h5 -->
-									<h5><i class="fa fa-user"></i> Users</h5>
-									<!-- Use hr tag to add border -->
-									<hr />
-								</li>
-								<li>
-									<!-- List item heading h6-->
-									<a href="#">Ravi Kumar</a> <span class="label label-warning pull-right">Free</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<a href="#">Balaji</a> <span class="label label-important pull-right">Premium</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<a href="#">Kumarasamy</a> <span class="label label-warning pull-right">Free</span>
-									<div class="clearfix"></div>
-									<hr />
-								</li>
-								<li>
-									<div class="drop-foot">
-										<a href="#">View All</a>
-									</div>
-								</li>
-							</ul>
-						</li>
-					</ul>
-				</nav>
+                    </ul>
+                </nav>
 			</div>
 		</div>
 
@@ -250,21 +130,20 @@
                 </div>
             </div>
         </div>
-
 	</body>
 
     <script type="text/javascript">
-        console.log(";;;;;")
         $(document).ready(
             $('#dest_button').click(function () {
 
-                var dest_id = $('#dest_ip').val()
+                var dest_ip = $('#dest_ip').val()
                 var dest_port = $('#dest_port').val()
 
+                console.log(dest_ip, dest_port)
                 $.ajax({
                     type: "POST",
                     url: "{% url 'proxy' %}",
-                    data: {'dest_id': dest_id, 'dest_port': dest_port, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
                     dataType: "json",
                     success: function (response) {
                         alert(response.message);
@@ -276,5 +155,4 @@
                 });
             }))
     </script>
-
 </html>

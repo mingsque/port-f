@@ -2,8 +2,10 @@ from django.shortcuts import render
 
 from .forms import LoginForm
 import MySQLdb
-
+from .proxy import Proxy
+from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.http import JsonResponse
 
 # Create your views here.
 from django import forms
@@ -11,13 +13,21 @@ from django import forms
 
 def proxy(request):
 
+    print(request.POST)
     dest_ip = request.POST['dest_ip']
     dest_port = request.POST['dest_port']
 
+    proxy = Proxy(10500, dest_ip, dest_port)
+    proxy.listen_start()
+
     print(dest_ip + "," + dest_port)
 
+    data = {
+        'dest_ip': dest_ip,
+        'dest_port': dest_port
+    }
 
-
+    return JsonResponse(data)
 
 def index(request):
 
