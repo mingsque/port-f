@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<!-- Title here -->
+		<title>Login</title>
+		<!-- Description, Keywords and Author -->
+		<meta name="description" content="Your description">
+		<meta name="keywords" content="Your,Keywords">
+		<meta name="author" content="ResponsiveWebInc">
+		
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<!-- Styles -->
+		<!-- Bootstrap CSS -->
+		<link href="{% static 'proxy_manager/css/bootstrap.min.css' %}" rel="stylesheet">
+		<!-- Font awesome CSS -->
+        <link href="{% static 'proxy_manager/css/font-awesome.min.css' %}" rel="stylesheet">
+		<!-- Custom CSS -->
+        <link href="{% static 'proxy_manager/css/style.css' %}" rel="stylesheet">
+		<!-- Favicon -->
+		<link rel="shortcut icon" href="#">
+	</head>
+	
+	<body>
+		<!-- Form area -->
+		<div class="admin-form">
+			<!-- Widget starts -->
+			<div class="widget worange">
+				<!-- Widget head -->
+				<div class="widget-head">
+					<i class="fa fa-lock"></i> Login 
+				</div>
+
+				<div class="widget-content">
+					<div class="padd">
+						<!-- Login form -->
+
+                        <!-- url = name in urls -->
+                        {% block content %}
+						<form class="form-horizontal" action="{% url 'main' %}" method="post">
+                            {% csrf_token %}
+							<!-- Email -->
+							<div class="form-group">
+								  <label class="control-label col-lg-3" for="inputEmail">아이디</label>
+								  <div class="col-lg-9">
+									<input type="text" class="form-control" id="id" name="id" placeholder="Slack Account">
+								  </div>
+							</div>
+							<!-- Password -->
+							<div class="form-group">
+								  <label class="control-label col-lg-3" for="inputPassword">인증번호</label>
+								  <div class="col-lg-9">
+									<input type="password" class="form-control" id="password" name="password" placeholder="Auth Number">
+								  </div>
+							</div>
+
+							<!-- Remember me checkbox and sign in button -->
+							<div class="form-group">
+								<div class="col-lg-9 col-lg-offset-3">
+									<button type="submit" class="btn btn-danger">인증요청</button>
+									<button type="reset" class="btn btn-default">로그인</button>
+								</div>
+							</div>
+						</form>
+
+                        {% endblock %}
+						<div class="clearfix"></div>
+					</div>
+				</div>
+				<div class="widget-foot">
+				  슬렉 아이디를 입력한 후 인증요청을 하세요
+				</div>
+			</div>  
+		</div>
+		<!-- Javascript files -->
+		<!-- jQuery -->
+		<script src="{% static 'proxy_manager/js/jquery.js' %}"></script>
+		<!-- Bootstrap JS -->
+        <script src="{% static 'proxy_manager/js/jquery.js' %}"></script>
+		<!-- Respond JS for IE8 -->
+        <script src="{% static 'proxy_manager/js/respond.min.js' %}"></script>
+		<!-- HTML5 Support for IE -->
+        <script src="{% static 'proxy_manager/js/html5shiv.js' %}"></script>
+	</body>	
+</html>
