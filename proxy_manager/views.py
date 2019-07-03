@@ -1,39 +1,98 @@
-from django.shortcuts import render
-
-from .forms import LoginForm
 import MySQLdb
-from .proxy import Proxy
-from django.http import JsonResponse
-from slacker import Slacker
 import random
 import string
+from django.shortcuts import render
 from.proxy_manager import ProxyManager
-import threading
+from django.http import JsonResponse
+from slacker import Slacker
 
 # Create your views here.
 from django import forms
 
 
+#menu 1,2,3,4
+def main(request):
+
+    status = ProxyManager.instance().listen_status()
+
+    return render(request, 'proxy_manager/main.html', {'listening_status': status})
 
 
-def static_apply(request):
+def static_apply_form(request):
 
-    return render(request, 'proxy_manager/main.html')
+    return render(request, 'proxy_manager/static_apply_form.html')
+
+
+def static_status(request):
+
+    static_proxy_info = ProxyManager.instance().get_static_status()
+
+    context = {'form': static_proxy_info}
+
+    return render(request, 'proxy_manager/static_status.html', context)
+
+
+def static_apply_list(request):
+
+    static_proxy_info = ProxyManager.instance().get_static_apply_list()
+
+    context = {'form': static_proxy_info}
+
+    return render(request, 'proxy_manager/static_apply_list.html', context)
+
+
+#ajax process
+def del_proxy(request):
+
+    static_port = request.POST['static_port']
+
+    ProxyManager.instance().del_static_proxy(static_port)
+
+    data = {'message': '지워졌다.'}
+
+    return JsonResponse(data)
+
+
+def apply_ok(request):
+
+    static_port = request.POST['static_port']
+    des_ip = request.POST['des_ip']
+    des_port = request.POST['des_port']
+    user_name = request.POST['user_name']
+    date_limit = request.POST['date_limit']
+
+    ProxyManager.instance().add_static_proxy(static_port, des_ip, des_port, user_name, date_limit)
+
+    data = {'message': '승인되었다'}
+
+    return JsonResponse(data)
+
+
+def static_apply_submit(request):
+
+    static_port = request.POST['static_port']
+    des_ip = request.POST['des_ip']
+    des_port = request.POST['des_port']
+    user_name = request.POST['user_name']
+    date_limit = request.POST['date_limit']
+
+    ProxyManager.instance().set_static_apply_submit(static_port, des_ip, des_port, user_name, date_limit)
+
+    return render(request, 'proxy_manager/static_apply_form.html')
 
 
 def proxy(request):
-
-    proxy_manager = ProxyManager.instance()
 
     proxy_number = int(request.POST['proxy_number'])
     dest_ip = request.POST['dest_ip']
     dest_port = request.POST['dest_port']
 
-    proxy = proxy_manager.get_proxy(proxy_number)
-    proxy.set_dest(dest_ip, dest_port)
-    proxy.listen_start()
+    proxy_manager = ProxyManager.instance()
 
-    threading.Timer(10.0, proxy.listen_stop).start()
+    proxy = proxy_manager.get_proxy(proxy_number)
+    proxy.set_des(dest_ip, dest_port)
+
+    proxy.listen_start()
 
     data = {
         'message': "30초 안에 접속하세요"
@@ -48,13 +107,13 @@ def login(request):
 
 
 def login_action(request):
+
     manager = ProxyManager.instance()
     status = manager.listen_status()
+
+    print(status)
+
     listening_status = dict()
-
-    for i in range(5):
-        listening_status[str(i)] = status[i]
-
 
     print(listening_status)
     id = request.POST['user_id']
@@ -97,7 +156,6 @@ def auth_using_slack(request):
 
     code = "".join(code)
 
-
     print(code)
 
     slack.chat.post_message(data[1], code, "")
@@ -130,14 +188,4 @@ def auth_using_slack(request):
     '''
     #return render(request, 'proxy_manager/login.html', {'form': form})
 
-
-def main(request):
-
-    print("open main")
-    id = request.POST.get('id')
-    print(request.method)
-    print(id)
-    form = LoginForm(request.POST)
-
-    return render(request, 'proxy_manager/main.html')
 

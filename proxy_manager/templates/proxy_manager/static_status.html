@@ -1,0 +1,223 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <!-- Title here -->
+    <title>PORTFORWARDING</title>
+    <!-- Description, Keywords and Author -->
+    <meta name="description" content="Your description">
+    <meta name="keywords" content="Your,Keywords">
+    <meta name="author" content="ResponsiveWebInc">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Styles -->
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'proxy_manager/css/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- jQuery UI -->
+    <link href="{% static 'proxy_manager/css/jquery-ui.css' %}" rel="stylesheet">
+    <!-- jQuery Gritter -->
+    <link href="{% static 'proxy_manager/css/jquery.gritter.css' %}" rel="stylesheet">
+    <!-- Font awesome CSS -->
+    <link href="{% static 'proxy_manager/css/font-awesome.min.css' %}" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{% static 'proxy_manager/css/style.css' %}" rel="stylesheet">
+    <!-- Widgets stylesheet -->
+    <link href="{% static 'proxy_manager/css/widgets.css' %}" rel="stylesheet">
+    <!-- Favicon -->
+</head>
+<!-- Javascript files -->
+<!-- jQuery -->
+<script src="{% static 'proxy_manager/js/jquery.js' %}"></script>
+<!-- Bootstrap JS -->
+<script src="{% static 'proxy_manager/js/bootstrap.min.js' %}"></script>
+<!-- jQuery UI -->
+<script src="{% static 'proxy_manager/js/jquery-ui.min.js' %}"></script>
+<!-- jQuery Flot -->
+<script src="{% static 'proxy_manager/js/excanvas.min.js' %}"></script>
+<script src="{% static 'proxy_manager/js/jquery.flot.js' %}"></script>
+<script src="{% static 'proxy_manager/js/jquery.flot.resize.js' %}"></script>
+<script src="{% static 'proxy_manager/js/jquery.flot.pie.js' %}"></script>
+<script src="{% static 'proxy_manager/js/jquery.flot.stack.js' %}"></script>
+
+<body>
+    <div class="navbar navbar-inverse navbar-fixed-top bs-docs-nav" role="banner">
+        <div class="container">
+            <!-- Menu button for smallar screens -->
+            <div class="navbar-header">
+                <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".bs-navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a href="index.html" class="navbar-brand">Pilot <span class="bold">Project</span></a>
+            </div>
+            <!-- Site name for smallar screens -->
+            <!-- Navigation starts -->
+            <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation">
+                <!-- Links -->
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <!-- Dropdown menu -->
+                        <ul class="dropdown-menu">
+                            <li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
+                            <li><a href="#"><i class="fa fa-cogs"></i> Settings</a></li>
+                            <li><a href="login.html"><i class="fa fa-power-off"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content starts -->
+    <div class="content">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-dropdown"><a href="#">Navigation</a></div>
+            <div class="sidebar-inner">
+                <!-- Search form -->
+                <div class="sidebar-widget">
+                    <form>
+                        <input type="text" class="form-control" placeholder="Search">
+                    </form>
+                </div>
+                <!--- Sidebar navigation -->
+                <!-- If the main navigation has sub navigation, then add the class "has_submenu" to "li" of main navigation. -->
+                <ul class="navi">
+                    <!-- Use the class nred, ngreen, nblue, nlightblue, nviolet or norange to add background color. You need to use this in <li> tag. -->
+                    <li class="nred current"><a href="{% url 'main' %}"><i class="fa fa-desktop"></i> 가변 포트 포워드</a></li>
+
+                    <li class="ngreen current"><a href="{% url 'static_apply_form' %}"><i class="fa fa-bar-chart-o"></i> 고정
+                        포트
+                        포워드 신청</a></li>
+                    <li class="norange current"><a href="{% url 'static_status' %}"><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
+                    <li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정 포트 신청 현황</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- Sidebar ends -->
+    <div class="mainbar">
+        <!-- Page heading -->
+        <div class="page-head">
+            <!-- Page heading -->
+            <h2 class="pull-left">Port Forwarding !
+                <span class="page-meta">Something Goes Here</span>
+            </h2>
+            <!-- Breadcrumb -->
+            <div class="clearfix"></div>
+        </div><!--/ Page heading ends -->
+
+        <div class="matter">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="widget wviolet">
+                            <div class="widget-head">
+                                <div class="pull-left">Tables</div>
+                                <div class="widget-icons pull-right">
+                                    <a href="#" class="wminimize"><i class="fa fa-chevron-up"></i></a>
+                                    <a href="#" class="wclose"><i class="fa fa-times"></i></a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="widget-content">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered ">
+                                        <thead>
+                                        <tr>
+                                            <th>포트 번호</th>
+                                            <th>목적지 IP</th>
+                                            <th>목적지 PORT</th>
+                                            <th>사용자</th>
+                                            <th>사용 기한</th>
+                                            <th>IN DATA</th>
+                                            <th>OUT DATA</th>
+                                            <th>생성 날짜</th>
+                                            <th>최근 사용 날짜</th>
+                                            <th>Control</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% block content %}
+                                            {% csrf_token %}
+                                            {% for infos in form %}
+                                                <tr>
+                                                    {% for info in infos %}
+                                                        <td>{{ info }}</td>
+                                                    {% endfor %}
+                                                    <td>
+                                                        <button class="del_btn btn btn-sm btn-danger"><i
+                                                                class="fa fa-times"></i></button>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% endblock %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    $(document).ready(
+        $('.dest_button').click(function () {
+
+            var proxy_number = $(this).next().next().attr('id')
+            var dest_ip = $(this).prev().prev().val()
+            var dest_port = $(this).prev().val()
+            console.log(proxy_number)
+            $.ajax({
+                type: "POST",
+                url: "{% url 'proxy' %}",
+                data: {
+                    'dest_ip': dest_ip,
+                    'dest_port': dest_port,
+                    'proxy_number': proxy_number,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                dataType: "json",
+                success: function (response) {
+                    alert(response.message);
+
+                },
+                error: function (request, status, error) {
+                    alert("주소가 올바르지 않습니다.")
+                },
+            });
+        }))
+
+        $('.del_btn').click(function(){
+
+            var static_port = $(this).parent().parent().children().eq(0).text()
+            console.log(static_port)
+            var that = $(this)
+
+             $.ajax({
+                type: "POST",
+                url: "{% url 'del_proxy' %}",
+                data: {
+                    'static_port': static_port,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                },
+                dataType: "json",
+                success: function (response) {
+                    alert(response.message);
+                    that.parent().parent().remove()
+                },
+                error: function (request, status, error) {
+                    alert("실패 했다.")
+                },
+            });
+        })
+
+</script>
+</html>
