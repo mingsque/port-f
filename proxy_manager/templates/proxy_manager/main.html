@@ -40,93 +40,119 @@
     <script src="{% static 'proxy_manager/js/jquery.flot.pie.js' %}"></script>
     <script src="{% static 'proxy_manager/js/jquery.flot.stack.js' %}"></script>
 
-	<body>
-		<div class="navbar navbar-inverse navbar-fixed-top bs-docs-nav" role="banner">
-			<div class="container">
-				<!-- Menu button for smallar screens -->
-				<div class="navbar-header">
-					<button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".bs-navbar-collapse">
-						<span class="sr-only">Toggle navigation</span>
-						<span class="icon-bar"></span>
-						<span class="icon-bar"></span>
-						<span class="icon-bar"></span>
-					</button>
-					<a href="index.html" class="navbar-brand">Pilot <span class="bold">Project</span></a>
-				</div>
-				<!-- Site name for smallar screens -->
-				<!-- Navigation starts -->
-				<nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation">
-					<!-- Links -->
-					<ul class="nav navbar-nav navbar-right">
-						<li class="dropdown">
-							<!-- Dropdown menu -->
-							<ul class="dropdown-menu">
-							<li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
-							<li><a href="#"><i class="fa fa-cogs"></i> Settings</a></li>
-							<li><a href="login.html"><i class="fa fa-power-off"></i> Logout</a></li>
-                            </ul>
-						</li>
-                    </ul>
-                </nav>
-			</div>
-		</div>
+    <body>
+    <div class="navbar navbar-inverse navbar-fixed-top bs-docs-nav" role="banner">
+        <div class="container">
+            <!-- Menu button for smallar screens -->
+            <div class="navbar-header">
+                <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".bs-navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a href="{% url 'login' %}" class="navbar-brand"><span class="bold">Pilot Project</span></a>
+            </div>
+            <!-- Site name for smallar screens -->
+            <!-- Navigation starts -->
+            <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation">
+                <!-- Links -->
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <!-- Dropdown menu -->
+                        <ul class="dropdown-menu">
+                            <li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
+                            <li><a href="#"><i class="fa fa-cogs"></i> Settings</a></li>
+                            <li><a href="login.html"><i class="fa fa-power-off"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
 
-		<!-- Main content starts -->
-		<div class="content">
-			<!-- Sidebar -->
-			<div class="sidebar">
-				<div class="sidebar-dropdown"><a href="#">Navigation</a></div>
-				<div class="sidebar-inner">
-					<!-- Search form -->
-					<div class="sidebar-widget">
-						<form >
-							<input type="text" class="form-control" placeholder="Search">
-						</form>
-					</div>
-					<!--- Sidebar navigation -->
-					<!-- If the main navigation has sub navigation, then add the class "has_submenu" to "li" of main navigation. -->
-					<ul class="navi">
-						<!-- Use the class nred, ngreen, nblue, nlightblue, nviolet or norange to add background color. You need to use this in <li> tag. -->
-						<li class="nred current"><a href="{% url 'main' %}"><i class="fa fa-desktop"></i> 가변 포트 포워드</a></li>
+    <!-- Main content starts -->
+    <div class="content">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-dropdown"><a href="#">Navigation</a></div>
+            <div class="sidebar-inner">
+                <!-- Search form -->
+                <div class="sidebar-widget">
+                    <form>
+                        <input type="text" class="form-control" placeholder="Search">
+                    </form>
+                </div>
+                <!--- Sidebar navigation -->
+                <!-- If the main navigation has sub navigation, then add the class "has_submenu" to "li" of main navigation. -->
+                <ul class="navi">
+                    <!-- Use the class nred, ngreen, nblue, nlightblue, nviolet or norange to add background color. You need to use this in <li> tag. -->
+                    <li class="nred current"><a href="{% url 'main' %}"><i class="fa fa-desktop"></i> 가변 포트 포워드</a></li>
 
-						<li class="ngreen current"><a href="{% url 'static_apply_form' %}"><i class="fa fa-bar-chart-o"></i> 고정 포트 포워드 신청</a></li>
-						<li class="norange current"><a href={% url 'static_status' %}><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
+                    <li class="norange current"><a href={% url 'static_status' %}><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
 
-						<li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정 포트 신청 현황</a></li>
-					</ul>
-				</div>
-			</div>
-			<!-- Sidebar ends -->
+                    <li class="ngreen current"><a href="{% url 'static_apply_form' %}"><i class="fa fa-bar-chart-o"></i>
+                        고정 포트 포워드 신청</a></li>
 
-            <div class="mainbar">
-				<!-- Page heading -->
-				<div class="page-head">
-				<!-- Page heading -->
-					<h2 class="pull-left">Port Forwarding !
-					  <span class="page-meta">Something Goes Here</span>
-					</h2>
-					<!-- Breadcrumb -->
-
-					<div class="clearfix"></div>
-				</div><!--/ Page heading ends -->
-                <!-- Matter -->
-                {% block content %}
-                    {% for status in listening_status %}
-                        <div style="margin-left:20px">
-                            <p>{{ status.port_number }}</p>
-                            <p id="field{{forloop.counter}}">{{ status.listening_state }}</p>
-                        </div>
-                        <div style="margin-left:20px;margin-bottom: 15px">
-                            <input style="width:200px" name="dest_ip" type="text">
-                            <input style="width:50px" name="dest_port" type="text">
-                            <button type="button" class="dest_button">포워드 요청</button>
-                            <input type="hidden" id="{{ forloop.counter }}">
-                        </div>
-                    {% endfor %}
-                {% endblock %}
+                    <li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정
+                        포트 신청 현황</a></li>
+                </ul>
             </div>
         </div>
-	</body>
+        <!-- Sidebar ends -->
+
+        <div class="mainbar">
+            <!-- Page heading -->
+            <div class="page-head">
+                <!-- Page heading -->
+                <h2 class="pull-left">Port Forwarding !
+                    <span class="page-meta">Something Goes Here</span>
+                </h2>
+                <!-- Breadcrumb -->
+
+                <div class="clearfix"></div>
+            </div><!--/ Page heading ends -->
+            <!-- Matter -->
+
+            <div class="matter">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="widget wred">
+                                <div class="widget-head">
+                                    <div class="pull-left">가변 포트 포워딩</div>
+                                    <div class="clearfix"></div>
+                                </div>
+                                <div class="widget-content">
+                                    <div class="padd">
+                                        {% block content %}
+                                            {% for status in listening_status %}
+                                                <div style="border-width:1px; border-color: #D8D8D8; border-style:solid; margin:10px" >
+                                                    <div style="margin-left:20px">
+                                                        <p>{{ status.port_number }}</p>
+                                                        <p id="field{{ forloop.counter }}">{{ status.listening_state }}</p>
+                                                    </div>
+                                                    <div style="margin-left:20px;margin-bottom: 15px">
+                                                        <input style="width:200px" name="dest_ip" type="text">
+                                                        <input style="width:50px" name="dest_port" type="text">
+                                                        <button type="button" class="dest_button">포워드 요청</button>
+                                                        <input type="hidden" id="{{ forloop.counter }}">
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% endblock %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+    </body>
 
     <script type="text/javascript">
         $(document).ready(

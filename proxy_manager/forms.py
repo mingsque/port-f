@@ -1,9 +1,8 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm
 
 
-class LoginForm(forms.Form):
-    id = forms.CharField(label='id', max_length=30)
-    password = forms.CharField(label='password')
+
 
 
 class StaticApplyForm(forms.Form):
@@ -13,3 +12,4 @@ class StaticApplyForm(forms.Form):
     des_port = forms.IntegerField(help_text="input destination port number")
     user_name = forms.CharField(help_text="input user name")
     date_limit = forms.DateField(help_text="Input limit date")
+

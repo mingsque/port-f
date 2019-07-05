@@ -5,6 +5,10 @@ from django.shortcuts import render
 from.proxy_manager import ProxyManager
 from django.http import JsonResponse
 from slacker import Slacker
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import authenticate
+from django.shortcuts import redirect
+
 
 # Create your views here.
 from django import forms
@@ -101,9 +105,52 @@ def proxy(request):
     return JsonResponse(data)
 
 
+def apply_reject(request):
+
+    port_number = request.POST['static_port']
+
+    ProxyManager.instance().static_apply_reject(port_number)
+
+    data = {"message": "신청을 거절했습니다."}
+
+    return JsonResponse(data)
+
+
 def login(request):
 
     return render(request, 'proxy_manager/login.html')
+
+
+def admin_login(request):
+
+    form = AuthenticationForm()
+    form.fields['username'].widget.attrs['class'] = 'form-control'
+    form.fields['username'].widget.attrs['placeholder'] = 'Admin ID'
+    form.fields['password'].widget.attrs['class'] = 'form-control'
+    form.fields['password'].widget.attrs['placeholder'] = 'Password'
+
+    return render(request, 'proxy_manager/admin_login.html', {'form': form})
+
+
+def admin_login_action(request):
+
+    id = request.POST['username']
+    password = request.POST['password']
+
+    db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
+    cur = db.cursor()
+    query = "SELECT password FROM hamon_admin WHERE id = '" + str(id) + "'"
+    cur.execute(query)
+    db_password = cur.fetchone()
+
+    print(db_password[0])
+    print(password)
+    if password == db_password[0]:
+        request.session['mode'] = 'admin'
+        request.session.set_expiry(0)
+        return redirect('main')
+    else:
+        return redirect('login')
 
 
 def login_action(request):

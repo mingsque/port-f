@@ -16,7 +16,6 @@ class StatusConsumer(WebsocketConsumer):
 
     def receive(self, event):
 
-        print("!!!!!!!")
         message = event['message']
 
         data = {'message': message}

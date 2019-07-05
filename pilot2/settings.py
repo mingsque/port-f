@@ -63,6 +63,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 600
+
 ROOT_URLCONF = 'pilot2.urls'
 
 TEMPLATES = [
@@ -82,6 +85,9 @@ TEMPLATES = [
     },
 ]
 
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.core.context_processors.request',
+)
 WSGI_APPLICATION = 'pilot2.wsgi.application'
 
 
@@ -142,4 +148,4 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 
-
+ALLOWED_HOSTS = ['10.1.2.18', 'localhost']

@@ -111,9 +111,10 @@ class ProxyManager(Singleton):
 
         cur.executemany(query, commit_info)
         cur.close()
+
         self.db.commit()
 
-    def check_unuse_proxy(self):
+    def check_destroy_proxy(self):
         cur = self.db.cursor()
 
         query = "SELECT static_port, update_time FROM data_use_amount"
@@ -122,11 +123,24 @@ class ProxyManager(Singleton):
 
         current_time = datetime.now()
 
+
         for result in results:
             limit = (current_time - result[1]).days
             print(result[0])
             print(limit)
             if limit > 3:
+                self.del_static_proxy(result[0])
+
+        query = "SELECT * FROM static_port_forwarding_info"
+        cur.execute(query)
+        results = cur.fetchall()
+
+        current_date = current_time.date()
+
+        for result in results:
+            limit = (current_date - result[4]).days
+            print(limit)
+            if limit >= 0:
                 self.del_static_proxy(result[0])
 
         cur.close()
@@ -138,7 +152,7 @@ class ProxyManager(Singleton):
         scheduler.start()
 
         scheduler.add_job(self.check_data_amount, 'interval', seconds=10, id='data_checker')
-        scheduler.add_job(self.check_unuse_proxy, 'interval', days=1, start_date=datetime.now(), id='unuse_remover')
+        scheduler.add_job(self.check_destroy_proxy, 'interval', days=1, start_date=datetime.now(), id='proxy_remover')
 
     def listen_status(self):
         status = list()
@@ -224,3 +238,11 @@ class ProxyManager(Singleton):
 
         return self.proxy_list.__getitem__(number - 1)
 
+    def static_apply_reject(self, static_port):
+        cur = self.db.cursor()
+
+        query = "DELETE FROM static_port_forwarding_apply WHERE static_port=" + static_port
+        cur.execute(query)
+
+        cur.close()
+        self.db.commit()

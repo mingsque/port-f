@@ -19,7 +19,7 @@ class Proxy:
     #no 0 = static, 1~5 = dynamic
     def __init__(self, no, port):
 
-        self.host = "127.0.0.1"
+        self.host = "10.1.2.18"
         self.lock = Lock()
 
         self.no = no
@@ -152,13 +152,13 @@ class Proxy:
         while True:
             try:
                 data = src_socket.recv(2048)
-            except:
-                print("send_socket : 소켓이 닫힘")
+            except Exception as ex:
+                print("에러 : {}".format(ex))
                 break
 
             with self.lock:
                 self.in_data = self.in_data + len(data)
-            print("in_data 전송량 : {}".format(self.in_data))
+            #print("in_data 전송량 : {}".format(self.in_data))
 
             if data == b"":
                 print("src_socket disconnected")
@@ -167,8 +167,8 @@ class Proxy:
             else:
                 try:
                     des_socket.sendall(data)
-                except:
-                    print("send_socket_sendall : 소켓이 닫힘")
+                except Exception as ex:
+                    print("에러 : {}".format(ex))
 
     def recv_socket(self, src_socket, des_socket):
 
@@ -181,7 +181,7 @@ class Proxy:
 
             with self.lock:
                 self.out_data = self.out_data + len(received)
-            print("out_data 전송량 : {}".format(self.out_data))
+            #print("out_data 전송량 : {}".format(self.out_data))
 
             if received == b"":
                 src_socket.close()

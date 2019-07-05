@@ -89,8 +89,9 @@
 						<!-- Use the class nred, ngreen, nblue, nlightblue, nviolet or norange to add background color. You need to use this in <li> tag. -->
 						<li class="nred current"><a href="{% url 'main' %}"><i class="fa fa-desktop"></i> 가변 포트 포워드</a></li>
 
+                        <li class="norange current"><a href="{% url 'static_status' %}"><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
+
 						<li class="ngreen current"><a href="{% url 'static_apply_form' %}"><i class="fa fa-bar-chart-o"></i> 고정 포트 포워드 신청</a></li>
-						<li class="norange current"><a href="{% url 'static_status' %}"><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
 
 						<li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정 포트 신청 현황</a></li>
 					</ul>
@@ -171,7 +172,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 	</body>

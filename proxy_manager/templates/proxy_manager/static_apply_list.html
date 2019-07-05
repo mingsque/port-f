@@ -89,10 +89,10 @@
                         <!-- Use the class nred, ngreen, nblue, nlightblue, nviolet or norange to add background color. You need to use this in <li> tag. -->
                         <li class="nred current"><a href="{% url 'main' %}"><i class="fa fa-desktop"></i> 가변 포트 포워드</a></li>
 
+                        <li class="norange current"><a href="{% url 'static_status' %}"><i class="fa fa-sitemap"></i>고정 포트 현황</a></li>
+
                         <li class="ngreen current"><a href="{% url 'static_apply_form' %}"><i class="fa fa-bar-chart-o"></i>
                             고정 포트 포워드 신청</a></li>
-                        <li class="norange current"><a href="{% url 'static_status' %}"><i class="fa fa-sitemap"></i>고정 포트
-                            현황</a></li>
 
                         <li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정 포트 신청
                             현황</a></li>
@@ -145,12 +145,18 @@
                                                             {% for info in infos %}
                                                                 <td>{{ info }}</td>
                                                             {% endfor %}
-                                                            <td>
-                                                                <button class="ok_btn btn btn-sm btn-success"><i
-                                                                        class="fa fa-check"></i></button>
-                                                                <button class="btn btn-sm btn-danger"><i
-                                                                        class="fa fa-times"></i></button>
-                                                            </td>
+
+                                                            {% if request.session.mode == 'admin' %}
+                                                                <td>
+                                                                    <button class="ok_btn btn btn-sm btn-success"><i
+                                                                            class="fa fa-check"></i></button>
+                                                                    <button class="reject_btn btn btn-sm btn-danger"><i
+                                                                            class="fa fa-times"></i></button>
+                                                                </td>
+                                                            {% else %}
+                                                                <td>
+                                                                </td>
+                                                            {% endif %}
                                                         </tr>
                                                     {% endfor %}
                                                 {% endblock %}
@@ -199,8 +205,7 @@
                  var user_name = $(this).parent().prev().prev().text()
                  var date_limit = $(this).parent().prev().text()
 
-                var that = $(this)
-
+                 var that = $(this)
 
                  $.ajax({
                     type: "POST",
@@ -214,6 +219,27 @@
                     },
                     error: function (request, status, error) {
                         alert("승인에 실패 하였습니다.")
+                    },
+                });
+            })
+
+            $('.reject_btn').click(function(){
+
+                 var static_port = $(this).parent().parent().children().eq(0).text()
+                 var that = $(this)
+
+                 $.ajax({
+                    type: "POST",
+                    url: "{% url 'apply_reject' %}",
+                    data: {'static_port': static_port, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    dataType: "json",
+                    success: function (response) {
+                        alert(response.message);
+
+                        that.parent().parent().remove()
+                    },
+                    error: function (request, status, error) {
+                        alert("거절에 실패 하였습니다.")
                     },
                 });
             })

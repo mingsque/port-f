@@ -58,6 +58,7 @@
                                 <div class="col-lg-9 col-lg-offset-3">
                                     <button id="auth_btn" type="button" class="btn btn-danger">인증요청</button>
                                     <button type="submit" class="btn btn-default">로그인</button>
+                                    <button id="admin_btn" type="button" class="btn btn-warning">관리자</button>
                                 </div>
                             </div>
                         </form>
@@ -84,8 +85,9 @@
 
 
     <script type="text/javascript">
-        $(document).ready(
-            $('#auth_btn').click(function () {
+        $(document).ready(function(){
+
+            $('#auth_btn').click(function(){
 
                 var user_id = $('#user_id').val()
 
@@ -102,6 +104,14 @@
                         alert("형식이 올바르지 않습니다.")
                     },
                 });
-            }))
+            })
+
+            $('#admin_btn').click(function(){
+
+                window.location.href='{% url 'admin_login' %}'
+
+            })
+        })
     </script>
+
 </html>
