@@ -6,43 +6,179 @@ from.proxy_manager import ProxyManager
 from django.http import JsonResponse
 from slacker import Slacker
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import authenticate
 from django.shortcuts import redirect
 
 
 # Create your views here.
 from django import forms
-
-
 #menu 1,2,3,4
+
+
+class Login:
+
+    id_auth_pairs = list()
+
+    @staticmethod
+    def login(request):
+
+        if request.method == "GET":
+
+            return render(request, 'proxy_manager/login.html')
+
+        if request.method == "POST":
+
+            status = ProxyManager.instance().listen_status()
+
+            user_id = request.POST['user_id']
+            input_auth_number = request.POST['auth_number']
+
+            for pair in Login.id_auth_pairs:
+
+                if pair['user_id'] == user_id and pair['code'] == input_auth_number:
+
+                    Login.id_auth_pairs.remove(pair)
+                    request.session['login'] = True
+                    return render(request, 'proxy_manager/main.html', {'listening_status': status})
+
+            return render(request, 'proxy_manager/login.html')
+
+    @staticmethod
+    def auth_using_slack(request):
+        #slack = Slacker('xoxp-188644484023-638488313699-681210631766-223c26295947f2bd6408b46759c9db61')
+        user_id = request.POST['user_id']
+
+        db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
+        cur = db.cursor()
+        query = "SELECT * FROM hamon_user WHERE user_id = '" + str(user_id) + "'"
+        cur.execute(query)
+        data = cur.fetchone()
+        print(data)
+        db.close()
+
+        if data is not None:
+            code = list()
+            for i in range(5):
+                char = random.choice(string.ascii_letters)
+                code.append(char)
+
+            code = "".join(code)
+
+            new_pair = {'user_id': user_id, 'code': code}
+
+            flag = 0
+            for pair in Login.id_auth_pairs:
+                if pair['user_id'] == user_id:
+                    pair['code'] = code
+                    flag = 1
+                    break
+
+            if flag == 0:
+                Login.id_auth_pairs.append(new_pair)
+
+            print(Login.id_auth_pairs)
+            #slack.chat.post_message(data[1], code, "")
+
+        data = {'message': '슬랙에서 코드를 확인하세요'}
+
+        return JsonResponse(data)
+
+        # get user info from slack and
+        '''
+        response = slack.users.list()
+
+        members = (response.body['members'])
+
+        login_set = []
+
+        for member in members:
+            try:
+                login_set.append((member['profile']['email'], member['id']))
+            except:
+                pass
+        print(login_set)
+
+        db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
+        cur = db.cursor()
+        query = "INSERT INTO hamon_user (user_id, slack_id) VALUES (%s,%s)"
+        cur.executemany(query, login_set)
+        db.commit()
+        db.close()
+        '''
+        # return render(request, 'proxy_manager/login.html', {'form': form})
+
+
+def node_proxy_close(request):
+
+    node_proxy_number = request.POST['node_proxy_number']
+
+    node_foward_info = {'node_proxy_number': node_proxy_number}
+
+    ProxyManager.instance().close_command(node_foward_info)
+
+    data = {'message': '실행하였다.'}
+
+    return JsonResponse(data)
+
+def node_proxy_forward(request):
+
+    print("foward")
+    node_proxy_number = request.POST['node_proxy_number']
+    des_ip = request.POST['dest_ip']
+    des_port = request.POST['dest_port']
+
+    node_foward_info = {'node_proxy_number': node_proxy_number, 'des_ip': des_ip, 'des_port': des_port}
+
+    print(node_foward_info)
+    ProxyManager.instance().transfer_command(node_foward_info)
+
+    data = {'message': '실행하였다.'}
+
+    return JsonResponse(data)
+
+
+def node_proxy_list(request):
+
+    node_proxy_list = ProxyManager.instance().node_proxy_list
+
+    return render(request, 'proxy_manager/node_proxy_list.html', {'node_proxy_list': node_proxy_list})
+
+
 def main(request):
+    if request.session.get('login', False):
 
-    status = ProxyManager.instance().listen_status()
+        status = ProxyManager.instance().listen_status()
 
-    return render(request, 'proxy_manager/main.html', {'listening_status': status})
+        return render(request, 'proxy_manager/main.html', {'listening_status': status})
+    else:
+        return render(request, 'proxy_manager/login.html')
 
 
 def static_apply_form(request):
+    if request.session.get('login', False):
 
-    return render(request, 'proxy_manager/static_apply_form.html')
+        return render(request, 'proxy_manager/static_apply_form.html')
+    else:
+        return render(request, 'proxy_manager/login.html')
 
 
 def static_status(request):
+    if request.session.get('login', False):
+        static_proxy_info = ProxyManager.instance().get_static_status()
+        context = {'form': static_proxy_info}
 
-    static_proxy_info = ProxyManager.instance().get_static_status()
-
-    context = {'form': static_proxy_info}
-
-    return render(request, 'proxy_manager/static_status.html', context)
+        return render(request, 'proxy_manager/static_status.html', context)
+    else:
+        return render(request, 'proxy_manager/login.html')
 
 
 def static_apply_list(request):
+    if request.session.get('login', False):
+        static_proxy_info = ProxyManager.instance().get_static_apply_list()
+        context = {'form': static_proxy_info}
 
-    static_proxy_info = ProxyManager.instance().get_static_apply_list()
-
-    context = {'form': static_proxy_info}
-
-    return render(request, 'proxy_manager/static_apply_list.html', context)
+        return render(request, 'proxy_manager/static_apply_list.html', context)
+    else:
+        return render(request, 'proxy_manager/login.html')
 
 
 #ajax process
@@ -116,11 +252,6 @@ def apply_reject(request):
     return JsonResponse(data)
 
 
-def login(request):
-
-    return render(request, 'proxy_manager/login.html')
-
-
 def admin_login(request):
 
     form = AuthenticationForm()
@@ -146,6 +277,7 @@ def admin_login_action(request):
     print(db_password[0])
     print(password)
     if password == db_password[0]:
+        request.session['login'] = True
         request.session['mode'] = 'admin'
         request.session.set_expiry(0)
         return redirect('main')
@@ -153,86 +285,7 @@ def admin_login_action(request):
         return redirect('login')
 
 
-def login_action(request):
-
-    manager = ProxyManager.instance()
-    status = manager.listen_status()
-
-    print(status)
-
-    listening_status = dict()
-
-    print(listening_status)
-    id = request.POST['user_id']
-    input_auth_number = request.POST['auth_number']
-
-    #print("원래코드 : {}".format(code))
-    #print("입력코드 : {}".format(input_auth_number))
-
-    '''
-    if input_auth_number == code:
-        return render(request, 'proxy_manager/main.html')
-    else:
-        return render(request, 'proxy_manager/login.html')
-    '''
-    return render(request, 'proxy_manager/main.html', {'listening_status': status})
 
 
-def auth_using_slack(request):
-    slack = Slacker('xoxp-188644484023-638488313699-681210631766-223c26295947f2bd6408b46759c9db61')
-
-    user_id = request.POST['user_id']
-    print(user_id)
-
-    db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
-    cur = db.cursor()
-    query = "SELECT * FROM hamon_user WHERE user_id = '" + str(user_id) + "'"
-    print(query)
-    cur.execute(query)
-    data = cur.fetchone()
-
-    print(data)
-    db.close()
-
-    global code
-    code = list()
-
-    for i in range(5):
-        char = random.choice(string.ascii_letters)
-        code.append(char)
-
-    code = "".join(code)
-
-    print(code)
-
-    slack.chat.post_message(data[1], code, "")
-
-    data = {'message': '슬랙에서 코드를 확인하세요'}
-
-    return JsonResponse(data)
-
-    #get user info from slack and
-    '''
-    response = slack.users.list()
-
-    members = (response.body['members'])
-
-    login_set = []
-    
-    for member in members:
-        try:
-            login_set.append((member['profile']['email'], member['id']))
-        except:
-            pass
-    print(login_set)
-
-    db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
-    cur = db.cursor()
-    query = "INSERT INTO hamon_user (user_id, slack_id) VALUES (%s,%s)"
-    cur.executemany(query, login_set)
-    db.commit()
-    db.close()
-    '''
-    #return render(request, 'proxy_manager/login.html', {'form': form})
 
 

@@ -97,7 +97,6 @@
                     <li class="nlightblue current"><a href="{% url 'static_apply_list' %}"><i class="fa fa-list"></i> 고정
                         포트 신청 현황</a></li>
                     <li class="nviolet current"><a href="{% url 'node_proxy_list' %}"><i class="fa fa-list"></i> 노드 프록시 목록</a></li>
-
                 </ul>
             </div>
         </div>
@@ -120,29 +119,50 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="widget wred">
+                            <div class="widget wviolet">
                                 <div class="widget-head">
-                                    <div class="pull-left">가변 포트 포워딩</div>
+                                    <div class="pull-left">노드 프록시 목록</div>
+
                                     <div class="clearfix"></div>
                                 </div>
                                 <div class="widget-content">
-                                    <div class="padd">
-                                        {% block content %}
-                                            {% for status in listening_status %}
-                                                <div style="border-width:1px; border-color: #D8D8D8; border-style:solid; margin:10px" >
-                                                    <div style="margin-left:20px">
-                                                        <p>{{ status.port_number }}</p>
-                                                        <p id="field{{ forloop.counter }}">{{ status.listening_state }}</p>
-                                                    </div>
-                                                    <div style="margin-left:20px;margin-bottom: 15px">
-                                                        <input style="width:200px" name="dest_ip" type="text">
-                                                        <input style="width:50px" name="dest_port" type="text">
-                                                        <button type="button" class="dest_button">포워드 요청</button>
-                                                        <input type="hidden" id="{{ forloop.counter }}">
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        {% endblock %}
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered ">
+                                            <thead>
+                                            <tr>
+                                                <th>번호</th>
+                                                <th>접속 노드 IP</th>
+                                                <th>접속 날짜</th>
+                                                <th>타겟</th>
+                                                <th>Control</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% block content %}
+                                                {% csrf_token %}
+
+                                                {% for node_proxy in node_proxy_list %}
+                                                    <tr>
+                                                    <td>{{ forloop.counter }}</td>
+                                                    <td>{{ node_proxy.node_info }}</td>
+                                                    <td>{{ node_proxy.connect_time }}</td>
+                                                    <td><input style="width:200px;height:30px" name="dest_ip" type="text">
+                                                        <input style="width:50px;height:30px" name="dest_port" type="text">
+                                                        <button style="height:30px" class="node_proxy_btn" type="button">포워드 요청</button></td>
+                                                            {% if request.session.mode == 'admin' %}
+                                                            <td>
+                                                                <button class="del_btn btn btn-sm btn-danger"><i
+                                                                        class="fa fa-times"></i></button>
+                                                            </td>
+                                                            {% else %}
+                                                            <td>
+                                                            </td>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    </tr>
+                                            {% endblock %}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -150,24 +170,29 @@
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
     </body>
 
     <script type="text/javascript">
-        $(document).ready(
-            $('.dest_button').click(function () {
 
-                var proxy_number = $(this).next().attr('id')
+        $(document).ready(function () {
+            $('.node_proxy_btn').click(function () {
+
+                var node_proxy_number = $(this).parent().prev().prev().prev().text()
                 var dest_ip = $(this).prev().prev().val()
                 var dest_port = $(this).prev().val()
-                console.log(proxy_number)
+                console.log(dest_ip, dest_port, node_proxy_number)
+
                 $.ajax({
                     type: "POST",
-                    url: "{% url 'proxy' %}",
-                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    url: "{% url 'node_proxy_forward' %}",
+                    data: {
+                        'dest_ip': dest_ip,
+                        'dest_port': dest_port,
+                        'node_proxy_number': node_proxy_number,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
                     dataType: "json",
                     success: function (response) {
                         alert(response.message);
@@ -176,20 +201,45 @@
                     error: function (request, status, error) {
                         alert("주소가 올바르지 않습니다.")
                     },
+                })
+            })
+
+            $('.del_btn').click(function () {
+                that = $(this)
+                console.log("...")
+
+                var node_proxy_number = $(this).parent().parent().children().eq(0).text()
+
+                console.log(node_proxy_number)
+
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'node_proxy_close' %}",
+                    data: {'node_proxy_number': node_proxy_number, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    dataType: "json",
+                    success: function (response) {
+                        alert(response.message)
+
+                        that.parent().parent().remove()
+                    },
+                    error: function (request, status, error) {
+                        alert("주소가 올바르지 않습니다.")
+                    },
                 });
-            }))
+            })
+        })
 
         inter = null
         var statusSocket = new WebSocket('ws://' + window.location.host + '/ws/status/');
 
-        statusSocket.onmessage = function(e) {
+        statusSocket.onmessage = function (e) {
             var data = JSON.parse(e.data)
             var listening_status = data['listening_status']
             var no = data['no']
 
-            target = '#field'+no
+            target = '#field' + no
 
-            if(listening_status == "listening"){
+            if (listening_status == "listening") {
                 $(target).parent().next().children().eq(2).attr('disabled', true)
                 $(target).parent().next().children().eq(2).text("이용중")
             } else {
@@ -197,16 +247,15 @@
                 $(target).parent().next().children().eq(2).text("포워드요청")
             }
             $(target).text(listening_status)
-
         };
 
-        statusSocket.onclose = function(e) {
+        statusSocket.onclose = function (e) {
             console.log("close")
             statusSocket.close()
             clearInterval(inter)
         };
 
-        data = {'key' : 'value'}
+        data = {'key': 'value'}
 
     </script>
 </html>

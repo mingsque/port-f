@@ -15,8 +15,6 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
@@ -26,7 +24,7 @@ SECRET_KEY = ')b6mj@gm!=ku_^s@p0@2y313s=uctj33p#p6xf&_bfl@ep*mzq'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['10.1.2.18', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -48,7 +46,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('192.168.116.133', 6380)],
+            "hosts": [('192.168.116.136', 6380)],
         },
     },
 }
@@ -65,6 +63,8 @@ MIDDLEWARE = [
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 600
+SESSION_SAVE_EVERY_REQUEST = True
+
 
 ROOT_URLCONF = 'pilot2.urls'
 
@@ -148,4 +148,3 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 
-ALLOWED_HOSTS = ['10.1.2.18', 'localhost']

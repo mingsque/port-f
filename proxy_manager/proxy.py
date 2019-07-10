@@ -3,6 +3,7 @@ import socket
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from threading import Lock
+import json
 
 
 class Connection:
@@ -18,6 +19,7 @@ class Connection:
 class Proxy:
     #no 0 = static, 1~5 = dynamic
     def __init__(self, no, port):
+        self.src_socket = None
 
         self.host = "10.1.2.18"
         self.lock = Lock()
@@ -74,6 +76,29 @@ class Proxy:
             self.listen_socket.close()
         except:
             print("listen_stop : 이미 닫힌 소켓입니다.")
+
+    def slave_listen_start(self, des_socket):
+        print("static listening...")
+
+        listening_thread = threading.Thread(target=self.slave_make_connection, args=(des_socket,))
+        listening_thread.daemon = True
+        listening_thread.start()
+
+    def slave_make_connection(self, command_socket):
+        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listen_socket.bind((self.host, self.port))
+        self.listen_socket.listen()
+
+        while True:
+            try:
+                self.src_socket, src_info = self.listen_socket.accept()
+            except:
+                print("소켓이 닫힘")
+                break
+            else:
+                send_info = {'command': 'set', 'des_ip': '192.168.252.134', 'des_port': 22}
+                command_socket.sendall(json.dumps(send_info).encode())
+
 
     def static_listen_start(self):
         print("static listening...")
@@ -147,8 +172,6 @@ class Proxy:
 
     def send_socket(self, src_socket, des_socket):
 
-        print("destip:{}".format(self.des_ip))
-        print("destport:{}".format(self.des_port))
         while True:
             try:
                 data = src_socket.recv(2048)
@@ -209,3 +232,54 @@ class Proxy:
 
     def __del__(self):
         print("proxy instance free by gc_collect")
+
+
+class StaticProxy(Proxy):
+    def listen_start(self):
+        print("listen..")
+
+
+class DynamicProxy(Proxy):
+    def listen_start(self):
+        print("listen..")
+
+
+class NodeProxy(Proxy):
+
+    def __init__(self, cmd_socket, port):
+        self.cmd_socket = cmd_socket
+        self.des_socket = None
+        self.port = port
+        self.host = '10.1.2.18'
+        self.lock = Lock()
+        self.in_data = 0
+        self.out_data = 0
+
+    def set_des_socket(self, des_socket):
+        self.des_socket = des_socket
+
+    def connect_wait(self, listen_socket):
+        print(self.host, self.port, "NodeProxy Listen..")
+        while True:
+            self.src_socket, src_info = listen_socket.accept()
+
+            send_info = {'command': 'set', 'des_ip': '192.168.116.136', 'des_port': 22}
+            self.cmd_socket.sendall(json.dumps(send_info).encode())
+
+    def connection(self):
+        print(self.src_socket)
+        print(self.des_socket)
+        threading.Thread(target=self.send_socket, args=(self.src_socket, self.des_socket)).start()
+        threading.Thread(target=self.recv_socket, args=(self.src_socket, self.des_socket)).start()
+
+    def listen_start(self):
+
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_socket.bind((self.host, self.port))
+        listen_socket.listen()
+
+        threading.Thread(target=self.connect_wait, args=(listen_socket,)).start()
+
+
+
+

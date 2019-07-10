@@ -1,7 +1,11 @@
-from .proxy import Proxy
+from .proxy import *
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import MySQLdb
+import socket
+import threading
+import json
+import time
 
 
 class Singleton:
@@ -24,6 +28,8 @@ class ProxyManager(Singleton):
 
         print("ProxyManager On")
 
+        self.node_proxy_list = list()
+        self.default = 20000
         #가변 포트
         self.proxy_list = list()
         self.proxy_list.append(Proxy(1, 30001))
@@ -33,15 +39,86 @@ class ProxyManager(Singleton):
         self.proxy_list.append(Proxy(5, 30005))
 
         # 고정 포트
-
         #proxy info in database
         self.static_proxy_info = None
         #listening proxy list
         self.static_proxy_list = list()
+        self.node_proxy_list = dict()
 
         self.db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
         self.set_proxy_info()
         self.start_schedule()
+        self.listen_slave()
+
+    def close_command(self, transfer_info):
+
+        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_number'])-1]
+        target_proxy['connect_socket'].close()
+        self.node_proxy_list.remove(target_proxy)
+
+    def transfer_command(self, transfer_info):
+
+        print("transfer")
+
+        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_number'])-1]
+        info = {'command': 'set_dest',
+                'des_ip': transfer_info['des_ip'],
+                'des_port': transfer_info['des_port']}
+
+        slave_data_socket = target_proxy['connect_socket']
+
+        info = json.dumps(info).encode('utf-8')
+        slave_data_socket.sendall(info)
+
+    def make_data_connection(self, slave_data_socket):
+        info = {'fd': slave_data_socket.fileno()}
+        slave_data_socket.sendall(json.dumps(info).encode())
+
+        data = slave_data_socket.recv(2048)
+
+        data = json.loads(data.decode('utf-8'))
+
+
+        if data['message'] == 'ok':
+            print(slave_data_socket.fileno)
+            self.default = self.default + 1
+            self.slave_proxy = NodeProxy(slave_data_socket, self.default)
+            self.node_proxy_list[slave_data_socket.fileno()] = self.slave_proxy
+            self.slave_proxy.listen_start()
+            print(self.node_proxy_list)
+
+        if data['message'] == 'set':
+            target = self.node_proxy_list[data['fd']]
+            print(slave_data_socket)
+            target.set_des_socket(slave_data_socket)
+            target.connection()
+            #print(self.node_proxy_list)
+            print('slave')
+
+        print('no')
+
+    def make_slave_connetion(self):
+
+        slave_listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        slave_listen_socket.bind(('10.1.2.18', 8001))
+        slave_listen_socket.listen()
+
+        while True:
+            slave_data_socket, slave_info = slave_listen_socket.accept()
+            print(slave_data_socket.fileno())
+            print(slave_listen_socket)
+            print(slave_data_socket)
+
+            threading.Thread(target=self.make_data_connection, args=(slave_data_socket,)).start()
+
+            info = {'node_info': slave_info,
+                    'connect_time': datetime.now(),
+                    'connect_socket': slave_data_socket}
+
+
+
+    def listen_slave(self):
+        threading.Thread(target=self.make_slave_connetion).start()
 
     def set_proxy_info(self):
 
@@ -123,7 +200,6 @@ class ProxyManager(Singleton):
 
         current_time = datetime.now()
 
-
         for result in results:
             limit = (current_time - result[1]).days
             print(result[0])
@@ -174,7 +250,8 @@ class ProxyManager(Singleton):
                                 data_use_amount.out_data,
                                 data_use_amount.create_time,
                                 data_use_amount.update_time
-                        FROM static_port_forwarding_info LEFT JOIN data_use_amount ON static_port_forwarding_info.static_port = data_use_amount.static_port
+                        FROM static_port_forwarding_info LEFT JOIN data_use_amount 
+                        ON static_port_forwarding_info.static_port = data_use_amount.static_port
                      """
         cur.execute(query)
         result = cur.fetchall()
