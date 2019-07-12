@@ -6,7 +6,7 @@ import socket
 import threading
 import json
 import time
-
+import sys
 
 class Singleton:
     __instance = None
@@ -21,28 +21,27 @@ class Singleton:
         cls.instance = cls.__getInstance
         return cls.__instance
 
-
 class ProxyManager(Singleton):
 
     def __init__(self):
 
         print("ProxyManager On")
 
-        self.node_proxy_list = list()
         self.default = 20000
         #가변 포트
         self.proxy_list = list()
-        self.proxy_list.append(Proxy(1, 30001))
-        self.proxy_list.append(Proxy(2, 30002))
-        self.proxy_list.append(Proxy(3, 30003))
-        self.proxy_list.append(Proxy(4, 30004))
-        self.proxy_list.append(Proxy(5, 30005))
+        self.proxy_list.append(DynamicProxy(1, 30001))
+        self.proxy_list.append(DynamicProxy(2, 30002))
+        self.proxy_list.append(DynamicProxy(3, 30003))
+        self.proxy_list.append(DynamicProxy(4, 30004))
+        self.proxy_list.append(DynamicProxy(5, 30005))
 
         # 고정 포트
         #proxy info in database
         self.static_proxy_info = None
         #listening proxy list
         self.static_proxy_list = list()
+        #fd , socket
         self.node_proxy_list = dict()
 
         self.db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
@@ -52,50 +51,19 @@ class ProxyManager(Singleton):
 
     def close_command(self, transfer_info):
 
-        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_number'])-1]
-        target_proxy['connect_socket'].close()
-        self.node_proxy_list.remove(target_proxy)
+        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_key'])]
+        node = target_proxy['node_proxy']
+
+        node.stop()
+
+        del self.node_proxy_list[int(transfer_info['node_proxy_key'])]
+        print(self.node_proxy_list)
 
     def transfer_command(self, transfer_info):
 
         print("transfer")
-
-        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_number'])-1]
-        info = {'command': 'set_dest',
-                'des_ip': transfer_info['des_ip'],
-                'des_port': transfer_info['des_port']}
-
-        slave_data_socket = target_proxy['connect_socket']
-
-        info = json.dumps(info).encode('utf-8')
-        slave_data_socket.sendall(info)
-
-    def make_data_connection(self, slave_data_socket):
-        info = {'fd': slave_data_socket.fileno()}
-        slave_data_socket.sendall(json.dumps(info).encode())
-
-        data = slave_data_socket.recv(2048)
-
-        data = json.loads(data.decode('utf-8'))
-
-
-        if data['message'] == 'ok':
-            print(slave_data_socket.fileno)
-            self.default = self.default + 1
-            self.slave_proxy = NodeProxy(slave_data_socket, self.default)
-            self.node_proxy_list[slave_data_socket.fileno()] = self.slave_proxy
-            self.slave_proxy.listen_start()
-            print(self.node_proxy_list)
-
-        if data['message'] == 'set':
-            target = self.node_proxy_list[data['fd']]
-            print(slave_data_socket)
-            target.set_des_socket(slave_data_socket)
-            target.connection()
-            #print(self.node_proxy_list)
-            print('slave')
-
-        print('no')
+        target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_key'])]
+        target_proxy['node_proxy'].set_des(transfer_info['des_ip'], transfer_info['des_port'])
 
     def make_slave_connetion(self):
 
@@ -105,17 +73,35 @@ class ProxyManager(Singleton):
 
         while True:
             slave_data_socket, slave_info = slave_listen_socket.accept()
-            print(slave_data_socket.fileno())
-            print(slave_listen_socket)
-            print(slave_data_socket)
 
-            threading.Thread(target=self.make_data_connection, args=(slave_data_socket,)).start()
+            info = {'fd': slave_data_socket.fileno()}
+            slave_data_socket.sendall(json.dumps(info).encode())
 
-            info = {'node_info': slave_info,
-                    'connect_time': datetime.now(),
-                    'connect_socket': slave_data_socket}
+            data = slave_data_socket.recv(2048)
 
+            data = json.loads(data.decode('utf-8'))
 
+            if data['message'] == 'ok':
+                print(slave_data_socket.fileno)
+
+                self.default = self.default + 1
+
+                self.slave_proxy = NodeProxy(slave_data_socket, self.default)
+                self.node_proxy_list[slave_data_socket.fileno()] = {'node_proxy': self.slave_proxy,
+                                                                    'fd': slave_data_socket.fileno(),
+                                                                    'connect_time': datetime.now(),
+                                                                    'ip_address': slave_info,
+                                                                    'listening_port': self.default}
+
+                self.slave_proxy.listen_start()
+                print(self.node_proxy_list)
+
+            if data['message'] == 'set':
+                target = self.node_proxy_list[data['fd']]['node_proxy']
+                print(slave_data_socket)
+                target.connection(target.src_socket, slave_data_socket)
+
+            print('no')
 
     def listen_slave(self):
         threading.Thread(target=self.make_slave_connetion).start()
@@ -131,13 +117,11 @@ class ProxyManager(Singleton):
         print("Proxy information : {}".format(self.static_proxy_info))
 
         for proxy_info in self.static_proxy_info:
-            #proxy_info[0] : static_port
-            #proxy_info[1] : destination address
-            #proxy_info[2] : destination port
-            proxy = Proxy(0, proxy_info[0])
+
+            proxy = StaticProxy(proxy_info[0])
             proxy.set_des(proxy_info[1], proxy_info[2])
             self.static_proxy_list.append(proxy)
-            proxy.static_listen_start()
+            proxy.listen_start()
 
         cur.close()
 
@@ -150,7 +134,7 @@ class ProxyManager(Singleton):
                 print("remove proxy , running list and database")
                 self.static_proxy_list.remove(proxy)
                 #destroy proxy , socket close
-                proxy.static_listen_stop()
+                proxy.stop()
                 query = "DELETE FROM static_port_forwarding_info WHERE static_port = " + str(proxy.port)
                 cur.execute(query)
                 self.db.commit()
@@ -171,7 +155,7 @@ class ProxyManager(Singleton):
             proxy.in_data = 0
             proxy.out_data = 0
 
-            insert_info = (proxy.port, in_data, out_data)
+            insert_info = (proxy.listen_port, in_data, out_data)
             commit_info.append(insert_info)
 
         query = """INSERT INTO DATA_USE_AMOUNT (static_port, in_data, out_data) 
@@ -233,7 +217,10 @@ class ProxyManager(Singleton):
     def listen_status(self):
         status = list()
         for proxy in self.proxy_list:
-            info = {'port_number': proxy.port, 'listening_state': proxy.listen_flag}
+            info = {'port_number': proxy.listen_port,
+                    'listening_state': proxy.listen_flag,
+                    'pick_state': proxy.timer_use_yn}
+
             status.append(info)
         return status
 
@@ -304,7 +291,7 @@ class ProxyManager(Singleton):
 
         self.db.commit()
 
-        proxy = Proxy(0, static_port)
+        proxy = StaticProxy(0, static_port)
         proxy.set_des(des_ip, des_port)
         proxy.static_listen_start()
         self.static_proxy_list.append(proxy)

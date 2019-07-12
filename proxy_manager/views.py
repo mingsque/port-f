@@ -109,9 +109,9 @@ class Login:
 
 def node_proxy_close(request):
 
-    node_proxy_number = request.POST['node_proxy_number']
+    node_proxy_key = request.POST['node_proxy_key']
 
-    node_foward_info = {'node_proxy_number': node_proxy_number}
+    node_foward_info = {'node_proxy_key': node_proxy_key}
 
     ProxyManager.instance().close_command(node_foward_info)
 
@@ -119,14 +119,15 @@ def node_proxy_close(request):
 
     return JsonResponse(data)
 
+
 def node_proxy_forward(request):
 
     print("foward")
-    node_proxy_number = request.POST['node_proxy_number']
+    node_proxy_key = request.POST['node_proxy_key']
     des_ip = request.POST['dest_ip']
     des_port = request.POST['dest_port']
 
-    node_foward_info = {'node_proxy_number': node_proxy_number, 'des_ip': des_ip, 'des_port': des_port}
+    node_foward_info = {'node_proxy_key': node_proxy_key, 'des_ip': des_ip, 'des_port': des_port}
 
     print(node_foward_info)
     ProxyManager.instance().transfer_command(node_foward_info)
@@ -139,6 +140,9 @@ def node_proxy_forward(request):
 def node_proxy_list(request):
 
     node_proxy_list = ProxyManager.instance().node_proxy_list
+
+    for node in node_proxy_list:
+        print(node)
 
     return render(request, 'proxy_manager/node_proxy_list.html', {'node_proxy_list': node_proxy_list})
 
@@ -182,6 +186,29 @@ def static_apply_list(request):
 
 
 #ajax process
+
+
+def timer_cancel(request):
+
+    proxy_number = int(request.POST['proxy_number'])
+    dynamic_proxy = ProxyManager.instance().get_proxy(proxy_number)
+
+    dynamic_proxy.timer_use_yn = 'n'
+    data = {'message': '성공했다.'}
+
+    return JsonResponse(data)
+
+def timer_on(request):
+
+    proxy_number = int(request.POST['proxy_number'])
+    dynamic_proxy = ProxyManager.instance().get_proxy(proxy_number)
+    dynamic_proxy.listen_stop()
+
+    dynamic_proxy.timer_use_yn = 'y'
+    data = {'message': '성공했다.'}
+
+    return JsonResponse(data)
+
 def del_proxy(request):
 
     static_port = request.POST['static_port']

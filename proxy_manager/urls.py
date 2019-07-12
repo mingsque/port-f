@@ -19,6 +19,8 @@ urlpatterns = [
     path('node_proxy_list', views.node_proxy_list, name='node_proxy_list'),
     path('node_proxy_forward', views.node_proxy_forward, name='node_proxy_forward'),
     path('node_proxy_close', views.node_proxy_close, name='node_proxy_close'),
+    path('timer_cancel', views.timer_cancel, name='timer_cancel'),
+    path('timer_on', views.timer_on, name='timer_on'),
 
 ]
 

@@ -51,7 +51,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a href="{% url 'login' %}" class="navbar-brand"><span class="bold">Pilot Project</span></a>
+                <a href="{% url 'login' %}" class="navbar-brand"><span class="bold">원격분배기 V2</span></a>
             </div>
             <!-- Site name for smallar screens -->
             <!-- Navigation starts -->
@@ -79,9 +79,7 @@
             <div class="sidebar-inner">
                 <!-- Search form -->
                 <div class="sidebar-widget">
-                    <form>
-                        <input type="text" class="form-control" placeholder="Search">
-                    </form>
+                   <p>메뉴</p>
                 </div>
                 <!--- Sidebar navigation -->
                 <!-- If the main navigation has sub navigation, then add the class "has_submenu" to "li" of main navigation. -->
@@ -130,8 +128,9 @@
                                         <table class="table table-bordered ">
                                             <thead>
                                             <tr>
-                                                <th>번호</th>
+                                                <th>포트</th>
                                                 <th>접속 노드 IP</th>
+                                                <th>현재 목적지</th>
                                                 <th>접속 날짜</th>
                                                 <th>타겟</th>
                                                 <th>Control</th>
@@ -140,25 +139,26 @@
                                             <tbody>
                                             {% block content %}
                                                 {% csrf_token %}
-
-                                                {% for node_proxy in node_proxy_list %}
+                                                {% for node_proxy in node_proxy_list.values %}
                                                     <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>{{ node_proxy.node_info }}</td>
-                                                    <td>{{ node_proxy.connect_time }}</td>
-                                                    <td><input style="width:200px;height:30px" name="dest_ip" type="text">
-                                                        <input style="width:50px;height:30px" name="dest_port" type="text">
-                                                        <button style="height:30px" class="node_proxy_btn" type="button">포워드 요청</button></td>
-                                                            {% if request.session.mode == 'admin' %}
-                                                            <td>
-                                                                <button class="del_btn btn btn-sm btn-danger"><i
-                                                                        class="fa fa-times"></i></button>
-                                                            </td>
-                                                            {% else %}
-                                                            <td>
-                                                            </td>
-                                                        {% endif %}
-                                                    {% endfor %}
+                                                        <td>{{ node_proxy.listening_port }}</td>
+                                                        <td>{{ node_proxy.ip_address }}</td>
+                                                        <td>{{ node_proxy.node_proxy.des_ip }}:{{ node_proxy.node_proxy.des_port }}</td>
+                                                        <td>{{ node_proxy.connect_time }}</td>
+                                                        <td><input type="hidden" value="{{ node_proxy.fd }}">
+                                                            <input style="width:200px;height:30px" name="dest_ip" type="text">
+                                                            <input style="width:50px;height:30px" name="dest_port" type="text">
+                                                            <button style="height:30px" class="node_proxy_btn" type="button">포워드 요청</button></td>
+                                                        {% if request.session.mode == 'admin' %}
+                                                        <td>
+                                                            <button class="del_btn btn btn-sm btn-danger"><i
+                                                                    class="fa fa-times"></i></button>
+                                                        </td>
+                                                        {% else %}
+                                                        <td>
+                                                        </td>
+                                                            {% endif %}
+                                                        {% endfor %}
                                                     </tr>
                                             {% endblock %}
                                             </tbody>
@@ -179,10 +179,10 @@
         $(document).ready(function () {
             $('.node_proxy_btn').click(function () {
 
-                var node_proxy_number = $(this).parent().prev().prev().prev().text()
+                var node_proxy_key = $(this).prev().prev().prev().val()
                 var dest_ip = $(this).prev().prev().val()
                 var dest_port = $(this).prev().val()
-                console.log(dest_ip, dest_port, node_proxy_number)
+                console.log(dest_ip, dest_port, node_proxy_key)
 
                 $.ajax({
                     type: "POST",
@@ -190,7 +190,7 @@
                     data: {
                         'dest_ip': dest_ip,
                         'dest_port': dest_port,
-                        'node_proxy_number': node_proxy_number,
+                        'node_proxy_key': node_proxy_key,
                         'csrfmiddlewaretoken': '{{ csrf_token }}'
                     },
                     dataType: "json",
@@ -206,16 +206,15 @@
 
             $('.del_btn').click(function () {
                 that = $(this)
+
                 console.log("...")
-
-                var node_proxy_number = $(this).parent().parent().children().eq(0).text()
-
-                console.log(node_proxy_number)
+                var node_proxy_key = $(this).parent().prev().children().eq(0).val()
+                console.log(node_proxy_key)
 
                 $.ajax({
                     type: "POST",
                     url: "{% url 'node_proxy_close' %}",
-                    data: {'node_proxy_number': node_proxy_number, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    data: {'node_proxy_key': node_proxy_key, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
                     dataType: "json",
                     success: function (response) {
                         alert(response.message)
@@ -228,34 +227,5 @@
                 });
             })
         })
-
-        inter = null
-        var statusSocket = new WebSocket('ws://' + window.location.host + '/ws/status/');
-
-        statusSocket.onmessage = function (e) {
-            var data = JSON.parse(e.data)
-            var listening_status = data['listening_status']
-            var no = data['no']
-
-            target = '#field' + no
-
-            if (listening_status == "listening") {
-                $(target).parent().next().children().eq(2).attr('disabled', true)
-                $(target).parent().next().children().eq(2).text("이용중")
-            } else {
-                $(target).parent().next().children().eq(2).attr('disabled', false)
-                $(target).parent().next().children().eq(2).text("포워드요청")
-            }
-            $(target).text(listening_status)
-        };
-
-        statusSocket.onclose = function (e) {
-            console.log("close")
-            statusSocket.close()
-            clearInterval(inter)
-        };
-
-        data = {'key': 'value'}
-
     </script>
 </html>

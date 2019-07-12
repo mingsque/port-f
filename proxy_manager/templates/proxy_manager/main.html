@@ -51,7 +51,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a href="{% url 'login' %}" class="navbar-brand"><span class="bold">Pilot Project</span></a>
+                <a href="{% url 'login' %}" class="navbar-brand"><span class="bold">원격분배기 V2</span></a>
             </div>
             <!-- Site name for smallar screens -->
             <!-- Navigation starts -->
@@ -79,9 +79,7 @@
             <div class="sidebar-inner">
                 <!-- Search form -->
                 <div class="sidebar-widget">
-                    <form>
-                        <input type="text" class="form-control" placeholder="Search">
-                    </form>
+                    <p>메뉴</p>
                 </div>
                 <!--- Sidebar navigation -->
                 <!-- If the main navigation has sub navigation, then add the class "has_submenu" to "li" of main navigation. -->
@@ -139,6 +137,15 @@
                                                         <input style="width:50px" name="dest_port" type="text">
                                                         <button type="button" class="dest_button">포워드 요청</button>
                                                         <input type="hidden" id="{{ forloop.counter }}">
+                                                        {% if status.pick_state == 'n'%}
+                                                            <button disabled=True class="pick_btn" type="button">고정</button>
+                                                            <button class="pick_cancel_btn" type="button">고정해제</button>
+                                                            <p id="static_field{{ forloop.counter }}">누군가 고정하였습니다.</p>
+                                                        {% else %}
+                                                            <button class="pick_btn" type="button">고정</button>
+                                                            <button disabled=True class="pick_cancel_btn" type="button">고정해제</button>
+                                                            <p id="static_field{{ forloop.counter }}">아무도 고정하지 않았습니다.</p>
+                                                        {% endif %}
                                                     </div>
                                                 </div>
                                             {% endfor %}
@@ -151,23 +158,33 @@
                 </div>
             </div>
 
-
         </div>
     </div>
     </body>
 
     <script type="text/javascript">
-        $(document).ready(
-            $('.dest_button').click(function () {
 
-                var proxy_number = $(this).next().attr('id')
-                var dest_ip = $(this).prev().prev().val()
-                var dest_port = $(this).prev().val()
-                console.log(proxy_number)
+        var statusSocket = new WebSocket('ws://' + window.location.host + '/ws/status/');
+        $(document).ready(function(){
+
+            $('.pick_btn').click(function(){
+                $(this).next().next().text("누군가 고정하였습니다.")
+                $(this).attr('disabled', true)
+                $(this).next().attr('disabled', false)
+
+                var info = {'target' : 'static',
+                            'status' : 'static',
+                            'proxy_number' : $(this).prev().attr('id') }
+
+                console.log(info)
+                statusSocket.send(JSON.stringify(info))
+
+                var proxy_number = $(this).prev().attr('id');
+                console.log(proxy_number);
                 $.ajax({
                     type: "POST",
-                    url: "{% url 'proxy' %}",
-                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    url: "{% url 'timer_cancel' %}",
+                    data: {'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
                     dataType: "json",
                     success: function (response) {
                         alert(response.message);
@@ -177,36 +194,94 @@
                         alert("주소가 올바르지 않습니다.")
                     },
                 });
-            }))
+            })
 
-        inter = null
-        var statusSocket = new WebSocket('ws://' + window.location.host + '/ws/status/');
+            $('.pick_cancel_btn').click(function () {
+                var proxy_number = $(this).prev().prev().attr('id');
+                $(this).prev().attr('disabled', false)
+                $(this).attr('disabled', true)
+                console.log(proxy_number);
+
+                var info = {'target' : 'static',
+                            'status' : 'not_static',
+                            'proxy_number' : proxy_number}
+
+                statusSocket.send(JSON.stringify(info))
+
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'timer_on' %}",
+                    data: {'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    dataType: "json",
+                    success: function (response) {
+                        alert(response.message);
+
+                    },
+                    error: function (request, status, error) {
+                        alert("주소가 올바르지 않습니다.")
+                    },
+                });
+
+                $(this).next().text("아무도 고정하지 않았습니다.")
+            })
+
+            $('.dest_button').click(function () {
+
+                var proxy_number = $(this).next().attr('id');
+                var dest_ip = $(this).prev().prev().val();
+                var dest_port = $(this).prev().val();
+                console.log(proxy_number);
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'proxy' %}",
+                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                    dataType: "json",
+                    success: function (response) {
+                        alert(response.message);
+                    },
+                    error: function (request, status, error) {
+                        alert("주소가 올바르지 않습니다.")
+                    },
+                });
+            })
+        })
 
         statusSocket.onmessage = function(e) {
             var data = JSON.parse(e.data)
-            var listening_status = data['listening_status']
-            var no = data['no']
+            console.log(data)
+            var no = data.no
+            console.log(no)
 
-            target = '#field'+no
+            if(data.target == 'listening'){
+                target = '#field'+no
+                if(data.status == 'listening'){
+                    $(target).parent().next().children().eq(2).attr('disabled', true)
+                    $(target).parent().next().children().eq(2).text("이용중")
+                } else {
+                    $(target).parent().next().children().eq(2).attr('disabled', false)
+                    $(target).parent().next().children().eq(2).text("포워드요청")
+                }
+                $(target).text(data.status)
+            } else if(data.target == "static"){
+                target = '#static_field'+no
+                if(data.status == 'static'){
+                    $(target).text("누군가 고정하였습니다.")
+                    $(target).prev().prev().attr('disabled', true)
+                    $(target).prev().attr('disabled', false)
 
-            if(listening_status == "listening"){
-                $(target).parent().next().children().eq(2).attr('disabled', true)
-                $(target).parent().next().children().eq(2).text("이용중")
-            } else {
-                $(target).parent().next().children().eq(2).attr('disabled', false)
-                $(target).parent().next().children().eq(2).text("포워드요청")
+                } else {
+                    $(target).text("아무도 고정하지 않았습니다.")
+                    $(target).prev().prev().attr('disabled', false)
+                    $(target).prev().attr('disabled', true)
+                }
             }
-            $(target).text(listening_status)
-
         };
 
         statusSocket.onclose = function(e) {
             console.log("close")
             statusSocket.close()
-            clearInterval(inter)
-        };
 
-        data = {'key' : 'value'}
+        };
 
     </script>
 </html>

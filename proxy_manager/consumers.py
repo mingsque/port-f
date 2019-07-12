@@ -14,25 +14,31 @@ class StatusConsumer(WebsocketConsumer):
     def disconnect(self, close_code):
         pass
 
-    def receive(self, event):
+    def receive(self, text_data):
+        print("???????????????????????????")
 
-        message = event['message']
+        event_massage = json.loads(text_data)
+        no = event_massage['proxy_number']
 
-        data = {'message': message}
-
-        self.send(json.dumps(data))
-
-        #text_data_json = json.loads(text_data)
-        #message = text_data_json['message']
+        if event_massage['status'] == 'static':
+            async_to_sync(self.channel_layer.group_send)('status', {'type': 'share_message',
+                                                                    'message': {'target': 'static',
+                                                                                'proxy_number': no,
+                                                                                'status': 'static'}})
+        else:
+            async_to_sync(self.channel_layer.group_send)('status', {'type': 'share_message',
+                                                                    'message': {'target': 'static',
+                                                                                'proxy_number': no,
+                                                                                'status': 'not_static'}})
 
     def share_message(self, event):
+        print("!!!!!!")
         message = event['message']
-
-        status = message['listening_status']
-        no = message['proxy_number']
+        print(event)
 
         # Send message to WebSocket
         self.send(text_data=json.dumps({
-            'listening_status': status,
-            'no': str(no)
+            'target': message['target'],
+            'status': message['status'],
+            'no': str(message['proxy_number'])
         }))

@@ -24,7 +24,7 @@ SECRET_KEY = ')b6mj@gm!=ku_^s@p0@2y313s=uctj33p#p6xf&_bfl@ep*mzq'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.1.2.18', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['10.1.2.18', '127.0.0.1', 'localhost', 'hamon-lab.iptime.org']
 
 
 # Application definition
@@ -62,7 +62,7 @@ MIDDLEWARE = [
 ]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 600
+SESSION_COOKIE_AGE = 1200
 SESSION_SAVE_EVERY_REQUEST = True
 
 
