@@ -5,8 +5,7 @@ import MySQLdb
 import socket
 import threading
 import json
-import time
-import sys
+
 
 class Singleton:
     __instance = None
@@ -20,6 +19,98 @@ class Singleton:
         cls.__instance = cls(*args, **kargs)
         cls.instance = cls.__getInstance
         return cls.__instance
+
+
+class Scheduler:
+
+    def __init__(self, db, proxy_list):
+        self.db = db
+        self.static_proxy_list = proxy_list
+
+    def check_slave_alive(self):
+        node_proxy_list = ProxyManager.instance().node_proxy_list
+        closed_list = list()
+
+        for node_proxy in node_proxy_list.values():
+            try:
+                cmd_socket = socket.fromfd(node_proxy['fd'], socket.AF_INET, socket.SOCK_STREAM)
+                cmd_socket.sendall(b"")
+            except Exception as ex:
+                closed_list.append(node_proxy['fd'])
+                node_proxy = node_proxy['node_proxy']
+                node_proxy.stop()
+                print("에러 : {}".format(ex))
+
+        for closed in closed_list:
+
+            del node_proxy_list[closed]
+
+    def update_data_amount(self):
+
+        cur = self.db.cursor()
+
+        commit_info = list()
+
+        for static_proxy in self.static_proxy_list:
+            in_data, out_data = static_proxy.get_data_amount()
+
+            insert_info = (static_proxy.listen_port, in_data, out_data)
+            commit_info.append(insert_info)
+
+        query = """INSERT INTO DATA_USE_AMOUNT (static_port, in_data, out_data) 
+                    SELECT A.static_port, A.in_data, A.out_data
+                    FROM (SELECT %s AS static_port,
+                                 %s AS in_data,
+                                 %s AS out_data
+                            FROM DUAL
+                         )A
+                    ON DUPLICATE KEY
+                    UPDATE in_data = DATA_USE_AMOUNT.in_data + A.in_data,
+                            out_data = DATA_USE_AMOUNT.out_data + A.out_data
+                """
+        cur.executemany(query, commit_info)
+        self.db.commit()
+
+        cur.close()
+
+    def check_not_use_proxy(self):
+
+        cur = self.db.cursor()
+
+        query = "SELECT static_port, update_time FROM data_use_amount"
+        cur.execute(query)
+        results = cur.fetchall()
+
+        current_time = datetime.now()
+
+        for result in results:
+            not_use_date = (current_time - result[1]).days
+            if not_use_date > 3:
+                ProxyManager.instance().del_static_proxy(result[0])
+
+        query = "SELECT * FROM static_port_forwarding_info"
+        cur.execute(query)
+        results = cur.fetchall()
+
+        current_date = current_time.date()
+
+        for result in results:
+            limit = (current_date - result[4]).days
+            if limit >= 0:
+                ProxyManager.instance().del_static_proxy(result[0])
+
+        cur.close()
+
+    def start(self):
+        print("Scheduler start")
+
+        scheduler = BackgroundScheduler()
+        scheduler.start()
+
+        scheduler.add_job(self.check_slave_alive, 'interval', seconds=30, id='slave_checker')
+        scheduler.add_job(self.update_data_amount, 'interval', seconds=30, id='data_checker')
+        scheduler.add_job(self.check_not_use_proxy, 'interval', days=1, start_date=datetime.now(), id='proxy_remover')
+
 
 class ProxyManager(Singleton):
 
@@ -46,7 +137,10 @@ class ProxyManager(Singleton):
 
         self.db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
         self.set_proxy_info()
-        self.start_schedule()
+
+        self.scheduler = Scheduler(self.db, self.static_proxy_list)
+        self.scheduler.start()
+
         self.listen_slave()
 
     def close_command(self, transfer_info):
@@ -54,26 +148,34 @@ class ProxyManager(Singleton):
         target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_key'])]
         node = target_proxy['node_proxy']
 
-        node.stop()
+        fd = target_proxy['fd']
+        cmd_socket = socket.fromfd(fd, socket.AF_INET, socket.SOCK_STREAM)
 
+        info = {'command': 'close'}
+        cmd_socket.sendall(json.dumps(info).encode())
+
+        node.stop()
         del self.node_proxy_list[int(transfer_info['node_proxy_key'])]
         print(self.node_proxy_list)
 
     def transfer_command(self, transfer_info):
 
-        print("transfer")
         target_proxy = self.node_proxy_list[int(transfer_info['node_proxy_key'])]
         target_proxy['node_proxy'].set_des(transfer_info['des_ip'], transfer_info['des_port'])
 
-    def make_slave_connetion(self):
+    def listen_slave(self):
+        threading.Thread(target=self.slave_accept).start()
+
+    def slave_accept(self):
 
         slave_listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        slave_listen_socket.bind(('10.1.2.18', 8001))
+        slave_listen_socket.bind(('localhost', 8001))
         slave_listen_socket.listen()
 
         while True:
             slave_data_socket, slave_info = slave_listen_socket.accept()
 
+            print("hi")
             info = {'fd': slave_data_socket.fileno()}
             slave_data_socket.sendall(json.dumps(info).encode())
 
@@ -94,17 +196,18 @@ class ProxyManager(Singleton):
                                                                     'listening_port': self.default}
 
                 self.slave_proxy.listen_start()
+                self.slave_proxy = None
+
                 print(self.node_proxy_list)
 
             if data['message'] == 'set':
                 target = self.node_proxy_list[data['fd']]['node_proxy']
                 print(slave_data_socket)
-                target.connection(target.src_socket, slave_data_socket)
+                connection_thread = threading.Thread(target=target.connection, args=(target.src_socket, slave_data_socket))
+                connection_thread.daemon = True
+                connection_thread.start()
 
             print('no')
-
-    def listen_slave(self):
-        threading.Thread(target=self.make_slave_connetion).start()
 
     def set_proxy_info(self):
 
@@ -125,95 +228,6 @@ class ProxyManager(Singleton):
 
         cur.close()
 
-    def del_static_proxy(self, static_port):
-
-        cur = self.db.cursor()
-
-        for proxy in self.static_proxy_list:
-            if proxy.port == int(static_port):
-                print("remove proxy , running list and database")
-                self.static_proxy_list.remove(proxy)
-                #destroy proxy , socket close
-                proxy.stop()
-                query = "DELETE FROM static_port_forwarding_info WHERE static_port = " + str(proxy.port)
-                cur.execute(query)
-                self.db.commit()
-                break
-
-        cur.close()
-        self.db.commit()
-
-    def check_data_amount(self):
-
-        cur = self.db.cursor()
-
-        commit_info = []
-        for proxy in self.static_proxy_list:
-
-            in_data = proxy.in_data
-            out_data = proxy.out_data
-            proxy.in_data = 0
-            proxy.out_data = 0
-
-            insert_info = (proxy.listen_port, in_data, out_data)
-            commit_info.append(insert_info)
-
-        query = """INSERT INTO DATA_USE_AMOUNT (static_port, in_data, out_data) 
-                    SELECT A.static_port, A.in_data, A.out_data
-                    FROM (SELECT %s AS static_port,
-                                 %s AS in_data,
-                                 %s AS out_data
-                            FROM DUAL
-                         )A
-                    ON DUPLICATE KEY
-                    UPDATE in_data = DATA_USE_AMOUNT.in_data + A.in_data,
-                            out_data = DATA_USE_AMOUNT.out_data + A.out_data
-                """
-
-        cur.executemany(query, commit_info)
-        cur.close()
-
-        self.db.commit()
-
-    def check_destroy_proxy(self):
-        cur = self.db.cursor()
-
-        query = "SELECT static_port, update_time FROM data_use_amount"
-        cur.execute(query)
-        results = cur.fetchall()
-
-        current_time = datetime.now()
-
-        for result in results:
-            limit = (current_time - result[1]).days
-            print(result[0])
-            print(limit)
-            if limit > 3:
-                self.del_static_proxy(result[0])
-
-        query = "SELECT * FROM static_port_forwarding_info"
-        cur.execute(query)
-        results = cur.fetchall()
-
-        current_date = current_time.date()
-
-        for result in results:
-            limit = (current_date - result[4]).days
-            print(limit)
-            if limit >= 0:
-                self.del_static_proxy(result[0])
-
-        cur.close()
-
-    def start_schedule(self):
-        print("Scheduler start")
-
-        scheduler = BackgroundScheduler()
-        scheduler.start()
-
-        scheduler.add_job(self.check_data_amount, 'interval', seconds=10, id='data_checker')
-        scheduler.add_job(self.check_destroy_proxy, 'interval', days=1, start_date=datetime.now(), id='proxy_remover')
-
     def listen_status(self):
         status = list()
         for proxy in self.proxy_list:
@@ -224,89 +238,22 @@ class ProxyManager(Singleton):
             status.append(info)
         return status
 
-    def get_static_status(self):
+    def add_static_proxy(self, static_port, des_ip, des_port):
 
-        cur = self.db.cursor()
-
-        query = """SELECT   static_port_forwarding_info.static_port, 
-                                static_port_forwarding_info.des_ip, 
-                                static_port_forwarding_info.des_port, 
-                                static_port_forwarding_info.user_name, 
-                                static_port_forwarding_info.date_limit,
-                                data_use_amount.in_data,
-                                data_use_amount.out_data,
-                                data_use_amount.create_time,
-                                data_use_amount.update_time
-                        FROM static_port_forwarding_info LEFT JOIN data_use_amount 
-                        ON static_port_forwarding_info.static_port = data_use_amount.static_port
-                     """
-        cur.execute(query)
-        result = cur.fetchall()
-
-        cur.close()
-
-        return result
-
-    def get_static_apply_list(self):
-
-        cur = self.db.cursor()
-
-        query = "SELECT * FROM static_port_forwarding_apply"
-        cur.execute(query)
-
-        result = cur.fetchall()
-
-        cur.close()
-
-        return result
-
-    def set_static_apply_submit(self, static_port, des_ip, des_port, user_name, date_limit):
-
-        cur = self.db.cursor()
-
-        submit_info = []
-        info = (static_port, des_ip, des_port, user_name, date_limit)
-        submit_info.append(info)
-        query = "INSERT INTO static_port_forwarding_apply(static_port, des_ip, des_port, user_name, date_limit) VALUES (%s,%s,%s,%s,%s)"
-        cur.executemany(query, submit_info)
-        self.db.commit()
-
-        cur.close()
-
-        return
-
-    def add_static_proxy(self, static_port, des_ip, des_port, user_name, date_limit):
-
-        cur = self.db.cursor()
-
-        submit_info = []
-        apply_info = (static_port, des_ip, des_port, user_name, date_limit)
-        submit_info.append(apply_info)
-
-        query = "INSERT INTO static_port_forwarding_info(static_port, des_ip, des_port, user_name, date_limit) VALUES (%s,%s,%s,%s,%s)"
-        cur.executemany(query, submit_info)
-
-        query = "DELETE FROM static_port_forwarding_apply WHERE static_port=" + static_port
-        cur.execute(query)
-
-        self.db.commit()
-
-        proxy = StaticProxy(0, static_port)
+        proxy = StaticProxy(static_port)
         proxy.set_des(des_ip, des_port)
-        proxy.static_listen_start()
         self.static_proxy_list.append(proxy)
+        proxy.listen_start()
 
-        cur.close()
+    def del_static_proxy(self, static_port):
+
+        for proxy in self.static_proxy_list:
+            if proxy.listen_port == int(static_port):
+                proxy.stop()
+                self.static_proxy_list.remove(proxy)
+                break
 
     def get_proxy(self, number):
 
         return self.proxy_list.__getitem__(number - 1)
 
-    def static_apply_reject(self, static_port):
-        cur = self.db.cursor()
-
-        query = "DELETE FROM static_port_forwarding_apply WHERE static_port=" + static_port
-        cur.execute(query)
-
-        cur.close()
-        self.db.commit()

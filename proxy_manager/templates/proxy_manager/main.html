@@ -133,8 +133,8 @@
                                                         <p id="field{{ forloop.counter }}">{{ status.listening_state }}</p>
                                                     </div>
                                                     <div style="margin-left:20px;margin-bottom: 15px">
-                                                        <input style="width:200px" name="dest_ip" type="text">
-                                                        <input style="width:50px" name="dest_port" type="text">
+                                                        <input style="width:200px" name="dest_ip" placeholder="ONLY IP" type="text">
+                                                        <input style="width:50px" name="dest_port" placeholder="PORT" type="text">
                                                         <button type="button" class="dest_button">포워드 요청</button>
                                                         <input type="hidden" id="{{ forloop.counter }}">
                                                         {% if status.pick_state == 'n'%}
@@ -191,7 +191,7 @@
 
                     },
                     error: function (request, status, error) {
-                        alert("주소가 올바르지 않습니다.")
+                        alert("고정에 실패하였습니다.")
                     },
                 });
             })
@@ -218,7 +218,7 @@
 
                     },
                     error: function (request, status, error) {
-                        alert("주소가 올바르지 않습니다.")
+                        alert("고정 해제에 실패하였습니다.")
                     },
                 });
 
@@ -231,6 +231,8 @@
                 var dest_ip = $(this).prev().prev().val();
                 var dest_port = $(this).prev().val();
                 console.log(proxy_number);
+
+
                 $.ajax({
                     type: "POST",
                     url: "{% url 'proxy' %}",
@@ -240,7 +242,7 @@
                         alert(response.message);
                     },
                     error: function (request, status, error) {
-                        alert("주소가 올바르지 않습니다.")
+                        alert("포워드 세팅에 실패하였습니다.")
                     },
                 });
             })

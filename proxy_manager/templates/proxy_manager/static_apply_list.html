@@ -173,28 +173,7 @@
     </body>
 
     <script type="text/javascript">
-        $(document).ready(
-            $('.dest_button').click(function () {
-
-                var proxy_number = $(this).next().next().attr('id')
-                var dest_ip = $(this).prev().prev().val()
-                var dest_port = $(this).prev().val()
-                console.log(proxy_number)
-                $.ajax({
-                    type: "POST",
-                    url: "{% url 'proxy' %}",
-                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
-                    dataType: "json",
-                    success: function (response) {
-                        alert(response.message);
-
-
-                    },
-                    error: function (request, status, error) {
-                        alert("주소가 올바르지 않습니다.")
-                    },
-                });
-            }))
+        $(document).ready(function(){
 
             $('.ok_btn').click(function(){
 
@@ -242,5 +221,6 @@
                     },
                 });
             })
+        })
     </script>
 </html>

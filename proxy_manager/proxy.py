@@ -15,6 +15,8 @@ class Connection:
         self.in_data = 0
         self.out_data = 0
 
+        self.lock = Lock()
+
     def send_socket(self):
 
         while True:
@@ -24,8 +26,8 @@ class Connection:
                 print("에러 : {}".format(ex))
                 break
 
-            #with self.lock:
-            self.in_data = self.in_data + len(data)
+            with self.lock:
+                self.in_data = self.in_data + len(data)
             # print("in_data 전송량 : {}".format(self.in_data))
 
             if data == b"":
@@ -47,8 +49,8 @@ class Connection:
                 print("recv_socket : 소켓이 닫힘")
                 break
 
-            #with self.lock:
-            self.out_data = self.out_data + len(received)
+            with self.lock:
+                self.out_data = self.out_data + len(received)
             # print("out_data 전송량 : {}".format(self.out_data))
 
             if received == b"":
@@ -87,7 +89,7 @@ class Proxy:
     listen_socket = None
     src_socket = None
 
-    listen_ip = '10.1.2.18'
+    listen_ip = 'localhost'
     listen_port = None
 
     des_socket = None
@@ -95,17 +97,32 @@ class Proxy:
     des_ip = None
     des_port = None
 
-    in_data = None
-    out_data = None
+    in_data = 0
+    out_data = 0
 
     lock = Lock()
 
     connection_list = list()
 
+    def get_data_amount(self):
+
+        self.in_data = 0
+        self.out_data = 0
+
+        for connection in self.connection_list:
+            self.in_data = self.in_data + connection.in_data
+            self.out_data = self.out_data + connection.out_data
+
+            connection.in_data = 0
+            connection.out_data = 0
+
+        return self.in_data, self.out_data
+
     def set_des(self, des_ip, des_port):
 
         self.des_ip = des_ip
         self.des_port = int(des_port)
+        print(self.des_ip, self.des_port)
 
     def listen_start(self):
         print("listening...")
@@ -150,7 +167,10 @@ class Proxy:
 class StaticProxy(Proxy):
 
     def __init__(self, port):
+        self.in_data = 0;
+        self.out_data = 0;
         self.listen_port = int(port)
+        self.connection_list = list()
 
     def accept_socket(self):
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -164,6 +184,7 @@ class StaticProxy(Proxy):
                 print("Listening 소켓이 닫힘")
                 break
             else:
+                print("ip", self.des_ip, "port", self.des_port)
                 des_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 des_socket.connect((self.des_ip, self.des_port))
 
@@ -230,18 +251,17 @@ class NodeProxy(Proxy):
 
     def __init__(self, cmd_socket, port):
         self.cmd_socket = cmd_socket
-        self.des_socket = None
         self.listen_port = port
+
         self.des_ip = None
         self.des_port = None
+
         self.src_socket = None
+        self.connection_list = list()
 
     def set_des(self, des_ip, des_port):
         self.des_ip = des_ip
         self.des_port = des_port
-
-    def set_des_socket(self, des_socket):
-        self.des_socket = des_socket
 
     def accept_socket(self):
 
@@ -250,17 +270,31 @@ class NodeProxy(Proxy):
         self.listen_socket.listen()
 
         while True:
-            self.src_socket, src_info = self.listen_socket.accept()
+            print("send SET")
 
-            send_info = {'command': 'set', 'des_ip': self.des_ip, 'des_port': int(self.des_port)}
-            self.cmd_socket.sendall(json.dumps(send_info).encode())
+            try:
+                self.src_socket, src_info = self.listen_socket.accept()
+            except:
+                print("Error about slave listening socket")
+                break;
+            else:
+                if self.des_ip is not None and self.des_port is not None:
+                    print("SEND COMMAND")
+                    send_info = {'command': 'set', 'des_ip': self.des_ip, 'des_port': int(self.des_port)}
+                    self.cmd_socket.sendall(json.dumps(send_info).encode())
 
     def stop(self):
         for connection in self.connection_list:
             connection.stop()
 
-        self.listen_socket.close()
-        self.cmd_socket.close()
+        try:
+            self.listen_socket.close()
+        except:
+            print("Already close")
+        try:
+            self.cmd_socket.close()
+        except:
+            print("Already close")
 
     def __del__(self):
         print("proxy instance free by gc_collect")

@@ -46,7 +46,7 @@
 
                 <!-- url = name in urls -->
                 {% block content %}
-                    <form class="form-horizontal" action="{% url 'admin_login_action' %}" method="post">
+                    <form class="form-horizontal" action="{% url 'admin_login' %}" method="post">
                         {% csrf_token %}
                         <!-- ID -->
                         <div class="form-group">

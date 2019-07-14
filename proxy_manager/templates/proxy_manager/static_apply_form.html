@@ -122,7 +122,7 @@
                                         <div class="padd">
                                             <!-- Form starts.  -->
                                             {% block content %}
-                                            <form class="form-horizontal" role="form" method="post" action="{% url 'static_apply_submit' %}">
+                                            <form class="form-horizontal" id="apply_btn" role="form" method="post" action="{% url 'static_apply_submit' %}">
                                                 {% csrf_token %}
                                                 <div class="form-group">
                                                     <label class="col-md-2 control-label">고정 포트 번호</label>
@@ -178,56 +178,8 @@
 
     <script type="text/javascript">
         $(document).ready(
-            $('.dest_button').click(function () {
+            $('#apply_btn').click(function () {
 
-                var proxy_number = $(this).next().next().attr('id')
-                var dest_ip = $(this).prev().prev().val()
-                var dest_port = $(this).prev().val()
-                console.log(proxy_number)
-                $.ajax({
-                    type: "POST",
-                    url: "{% url 'proxy' %}",
-                    data: {'dest_ip': dest_ip, 'dest_port': dest_port, 'proxy_number' : proxy_number ,'csrfmiddlewaretoken': '{{ csrf_token }}'},
-                    dataType: "json",
-                    success: function (response) {
-                        alert(response.message);
-
-                    },
-                    error: function (request, status, error) {
-                        alert("주소가 올바르지 않습니다.")
-                    },
-                });
-            }))
-
-        inter = null
-        var statusSocket = new WebSocket('ws://' + window.location.host + '/ws/status/');
-
-
-        statusSocket.onmessage = function(e) {
-            var data = JSON.parse(e.data)
-            var listening_status = data['listening_status']
-            var no = data['no']
-
-            target = '#field'+no
-
-            if(listening_status == "listening"){
-                $(target).prev().attr('disabled', true)
-                $(target).prev().text("이용중")
-            } else {
-                $(target).prev().attr('disabled', false)
-                $(target).prev().text("포워드 요청")
-            }
-            $(target).text(listening_status)
-
-        };
-
-        statusSocket.onclose = function(e) {
-            console.log("close")
-            statusSocket.close()
-            clearInterval(inter)
-        };
-
-        data = {'key' : 'value'}
-
+                alert("신청되었습니다.")
     </script>
 </html>

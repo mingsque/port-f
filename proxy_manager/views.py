@@ -8,10 +8,7 @@ from slacker import Slacker
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import redirect
 
-
-# Create your views here.
-from django import forms
-#menu 1,2,3,4
+db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
 
 
 class Login:
@@ -106,6 +103,39 @@ class Login:
         '''
         # return render(request, 'proxy_manager/login.html', {'form': form})
 
+    @staticmethod
+    def admin_login(request):
+
+        if request.method == "GET":
+            form = AuthenticationForm()
+            form.fields['username'].widget.attrs['class'] = 'form-control'
+            form.fields['username'].widget.attrs['placeholder'] = 'Admin ID'
+            form.fields['password'].widget.attrs['class'] = 'form-control'
+            form.fields['password'].widget.attrs['placeholder'] = 'Password'
+
+            return render(request, 'proxy_manager/admin_login.html', {'form': form})
+
+        if request.method == "POST":
+            id = request.POST['username']
+            password = request.POST['password']
+
+            db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
+            cur = db.cursor()
+            query = "SELECT password FROM hamon_admin WHERE id = '" + str(id) + "'"
+            cur.execute(query)
+            db_password = cur.fetchone()
+
+            if db_password is not None:
+                if password == db_password[0]:
+                    request.session['login'] = True
+                    request.session['mode'] = 'admin'
+                    request.session.set_expiry(0)
+                    return redirect('main')
+                else:
+                    return redirect('login')
+            else:
+                return redirect('login')
+
 
 def node_proxy_close(request):
 
@@ -115,14 +145,13 @@ def node_proxy_close(request):
 
     ProxyManager.instance().close_command(node_foward_info)
 
-    data = {'message': '실행하였다.'}
+    data = {'message': '접속을 끊었습니다.'}
 
     return JsonResponse(data)
 
 
 def node_proxy_forward(request):
 
-    print("foward")
     node_proxy_key = request.POST['node_proxy_key']
     des_ip = request.POST['dest_ip']
     des_port = request.POST['dest_port']
@@ -132,19 +161,22 @@ def node_proxy_forward(request):
     print(node_foward_info)
     ProxyManager.instance().transfer_command(node_foward_info)
 
-    data = {'message': '실행하였다.'}
+    data = {'message': '목적지를 설정하였습니다.'}
 
     return JsonResponse(data)
 
 
 def node_proxy_list(request):
+    if request.session.get('login', False):
 
-    node_proxy_list = ProxyManager.instance().node_proxy_list
+        node_proxy_list = ProxyManager.instance().node_proxy_list
 
-    for node in node_proxy_list:
-        print(node)
+        for node in node_proxy_list:
+            print(node)
 
-    return render(request, 'proxy_manager/node_proxy_list.html', {'node_proxy_list': node_proxy_list})
+        return render(request, 'proxy_manager/node_proxy_list.html', {'node_proxy_list': node_proxy_list})
+    else:
+        return render(request, 'proxy_manager/login.html')
 
 
 def main(request):
@@ -167,7 +199,27 @@ def static_apply_form(request):
 
 def static_status(request):
     if request.session.get('login', False):
-        static_proxy_info = ProxyManager.instance().get_static_status()
+
+        cur = db.cursor()
+
+        query = """SELECT   static_port_forwarding_info.static_port, 
+                                       static_port_forwarding_info.des_ip, 
+                                       static_port_forwarding_info.des_port, 
+                                       static_port_forwarding_info.user_name, 
+                                       static_port_forwarding_info.date_limit,
+                                       data_use_amount.in_data,
+                                       data_use_amount.out_data,
+                                       data_use_amount.create_time,
+                                       data_use_amount.update_time
+                               FROM static_port_forwarding_info LEFT JOIN data_use_amount 
+                               ON static_port_forwarding_info.static_port = data_use_amount.static_port
+                            """
+        cur.execute(query)
+        static_proxy_info = cur.fetchall()
+
+        cur.close()
+        db.commit()
+
         context = {'form': static_proxy_info}
 
         return render(request, 'proxy_manager/static_status.html', context)
@@ -177,7 +229,16 @@ def static_status(request):
 
 def static_apply_list(request):
     if request.session.get('login', False):
-        static_proxy_info = ProxyManager.instance().get_static_apply_list()
+
+        cur = db.cursor()
+
+        query = "SELECT * FROM static_port_forwarding_apply"
+        cur.execute(query)
+
+        static_proxy_info = cur.fetchall()
+
+        cur.close()
+
         context = {'form': static_proxy_info}
 
         return render(request, 'proxy_manager/static_apply_list.html', context)
@@ -186,17 +247,16 @@ def static_apply_list(request):
 
 
 #ajax process
-
-
 def timer_cancel(request):
 
     proxy_number = int(request.POST['proxy_number'])
     dynamic_proxy = ProxyManager.instance().get_proxy(proxy_number)
 
     dynamic_proxy.timer_use_yn = 'n'
-    data = {'message': '성공했다.'}
+    data = {'message': '고정하였습니다.'}
 
     return JsonResponse(data)
+
 
 def timer_on(request):
 
@@ -205,47 +265,26 @@ def timer_on(request):
     dynamic_proxy.listen_stop()
 
     dynamic_proxy.timer_use_yn = 'y'
-    data = {'message': '성공했다.'}
+    data = {'message': '고정을 해제 하였습니다..'}
 
     return JsonResponse(data)
+
 
 def del_proxy(request):
 
     static_port = request.POST['static_port']
 
+    cur = db.cursor()
+    query = "DELETE FROM static_port_forwarding_info WHERE static_port = " + str(static_port)
+    cur.execute(query)
+    db.commit()
+    cur.close
+
     ProxyManager.instance().del_static_proxy(static_port)
 
-    data = {'message': '지워졌다.'}
+    data = {'message': '고정포트를 지웠습니다.'}
 
     return JsonResponse(data)
-
-
-def apply_ok(request):
-
-    static_port = request.POST['static_port']
-    des_ip = request.POST['des_ip']
-    des_port = request.POST['des_port']
-    user_name = request.POST['user_name']
-    date_limit = request.POST['date_limit']
-
-    ProxyManager.instance().add_static_proxy(static_port, des_ip, des_port, user_name, date_limit)
-
-    data = {'message': '승인되었다'}
-
-    return JsonResponse(data)
-
-
-def static_apply_submit(request):
-
-    static_port = request.POST['static_port']
-    des_ip = request.POST['des_ip']
-    des_port = request.POST['des_port']
-    user_name = request.POST['user_name']
-    date_limit = request.POST['date_limit']
-
-    ProxyManager.instance().set_static_apply_submit(static_port, des_ip, des_port, user_name, date_limit)
-
-    return render(request, 'proxy_manager/static_apply_form.html')
 
 
 def proxy(request):
@@ -268,51 +307,73 @@ def proxy(request):
     return JsonResponse(data)
 
 
-def apply_reject(request):
+def static_apply_submit(request):
 
-    port_number = request.POST['static_port']
+    static_port = request.POST['static_port']
+    des_ip = request.POST['des_ip']
+    des_port = request.POST['des_port']
+    user_name = request.POST['user_name']
+    date_limit = request.POST['date_limit']
 
-    ProxyManager.instance().static_apply_reject(port_number)
+    cur = db.cursor()
 
-    data = {"message": "신청을 거절했습니다."}
+    submit_info = []
+    info = (static_port, des_ip, des_port, user_name, date_limit)
+    submit_info.append(info)
+    query = "INSERT INTO static_port_forwarding_apply(static_port, des_ip, des_port, user_name, date_limit) VALUES (%s,%s,%s,%s,%s)"
+    cur.executemany(query, submit_info)
+    db.commit()
+
+    cur.close()
+
+    return redirect('static_apply_list')
+
+
+def apply_ok(request):
+
+    static_port = request.POST['static_port']
+    des_ip = request.POST['des_ip']
+    des_port = request.POST['des_port']
+    user_name = request.POST['user_name']
+    date_limit = request.POST['date_limit']
+
+    cur = db.cursor()
+
+    submit_info = []
+    apply_info = (static_port, des_ip, des_port, user_name, date_limit)
+    submit_info.append(apply_info)
+
+    query = "INSERT INTO static_port_forwarding_info(static_port, des_ip, des_port, user_name, date_limit) VALUES (%s,%s,%s,%s,%s)"
+    cur.executemany(query, submit_info)
+
+    query = "DELETE FROM static_port_forwarding_apply WHERE static_port=" + static_port
+    cur.execute(query)
+
+    db.commit()
+
+    ProxyManager.instance().add_static_proxy(static_port, des_ip, des_port)
+
+    data = {'message': '신청을 승인하였습니다.'}
 
     return JsonResponse(data)
 
 
-def admin_login(request):
+def apply_reject(request):
 
-    form = AuthenticationForm()
-    form.fields['username'].widget.attrs['class'] = 'form-control'
-    form.fields['username'].widget.attrs['placeholder'] = 'Admin ID'
-    form.fields['password'].widget.attrs['class'] = 'form-control'
-    form.fields['password'].widget.attrs['placeholder'] = 'Password'
+    port_number = request.POST['static_port']
 
-    return render(request, 'proxy_manager/admin_login.html', {'form': form})
-
-
-def admin_login_action(request):
-
-    id = request.POST['username']
-    password = request.POST['password']
-
-    db = MySQLdb.connect(host="127.0.0.1", user="root", passwd="hamonsoft", db="pilot")
     cur = db.cursor()
-    query = "SELECT password FROM hamon_admin WHERE id = '" + str(id) + "'"
+
+    query = "DELETE FROM static_port_forwarding_apply WHERE static_port=" + port_number
+
     cur.execute(query)
-    db_password = cur.fetchone()
+    cur.close()
 
-    print(db_password[0])
-    print(password)
-    if password == db_password[0]:
-        request.session['login'] = True
-        request.session['mode'] = 'admin'
-        request.session.set_expiry(0)
-        return redirect('main')
-    else:
-        return redirect('login')
+    db.commit()
 
+    data = {"message": "신청을 거절했습니다."}
 
-
+    return JsonResponse(data)
 
 
 
