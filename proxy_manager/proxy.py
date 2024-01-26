@@ -202,6 +202,8 @@ class DynamicProxy(Proxy):
         self.no = no
         self.listen_port = port
 
+		self.something = None
+
     def accept_socket(self):
 
         channel_layer = get_channel_layer()
