@@ -202,7 +202,7 @@ class DynamicProxy(Proxy):
         self.no = no
         self.listen_port = port
 
-		self.something = None
+		self.something = "somethingnew"
 
     def accept_socket(self):
 
